@@ -88,6 +88,7 @@ export async function categorizeWithClaude(input: string): Promise<ClaudeItem> {
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 400,
+    temperature: 0,
     system: SYSTEM_PROMPT,
     tools: [TOOL_DEFINITION],
     tool_choice: { type: "tool", name: TOOL_DEFINITION.name },
@@ -163,7 +164,75 @@ export async function resolveItem(
 
   const supabase = await createClient();
 
-  // 1. Try DB match
+  // 1. Dictionary lookup — authoritative for common items. Map the canonical
+  //    Finnish name back to a household-level item (existing or new).
+  const dictHit = lookupDict(input);
+  if (dictHit) {
+    const { data: existingByCanonical } = await supabase
+      .from("items")
+      .select("id, canonical_fi, canonical_sv, category_id, unit, default_qty")
+      .eq("household_id", householdId)
+      .eq("canonical_fi", dictHit.fi)
+      .maybeSingle();
+
+    if (existingByCanonical) {
+      await supabase
+        .from("item_aliases")
+        .upsert(
+          {
+            item_id: existingByCanonical.id,
+            alias: input.toLowerCase(),
+            lang: "fi",
+          },
+          { onConflict: "item_id,alias,lang", ignoreDuplicates: true },
+        );
+      return {
+        ...(existingByCanonical as Omit<ResolvedItem, "wasCreated">),
+        wasCreated: false,
+      };
+    }
+
+    // Create item from dict entry
+    const { data: cat } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("key", dictHit.category)
+      .single();
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("items")
+      .insert({
+        household_id: householdId,
+        canonical_fi: dictHit.fi,
+        canonical_sv: dictHit.sv,
+        category_id: cat?.id ?? null,
+        unit: dictHit.unit,
+        default_qty: dictHit.default_qty,
+      })
+      .select("id, canonical_fi, canonical_sv, category_id, unit, default_qty")
+      .single();
+    if (insErr) throw insErr;
+
+    await supabase
+      .from("item_aliases")
+      .upsert(
+        dictHit.aliases
+          .concat([dictHit.fi, dictHit.sv, input.toLowerCase()])
+          .map((a) => ({
+            item_id: inserted.id,
+            alias: a.toLowerCase(),
+            lang: "fi" as const,
+          })),
+        { onConflict: "item_id,alias,lang", ignoreDuplicates: true },
+      );
+
+    return {
+      ...(inserted as Omit<ResolvedItem, "wasCreated">),
+      wasCreated: true,
+    };
+  }
+
+  // 2. DB match (exact alias / canonical / trigram fuzzy) for non-dictionary items
   const { data: matchedId } = await supabase.rpc("match_item", {
     p_household: householdId,
     p_text: input,
@@ -177,7 +246,6 @@ export async function resolveItem(
       .single();
     if (error) throw error;
 
-    // Record the new spelling as an alias (best-effort)
     await supabase
       .from("item_aliases")
       .upsert(
@@ -188,17 +256,15 @@ export async function resolveItem(
     return { ...(existing as Omit<ResolvedItem, "wasCreated">), wasCreated: false };
   }
 
-  // 2. Ask categorizer (dictionary first, Claude fallback)
+  // 3. Claude (with FSOB post-correction) for the long tail
   const claudeItem = await categorize(input);
 
-  // 3. Resolve category_id
   const { data: cat } = await supabase
     .from("categories")
     .select("id")
     .eq("key", claudeItem.category_key)
     .single();
 
-  // 4. Insert item (handle race: another concurrent call may have inserted it)
   const { data: inserted, error: insertError } = await supabase
     .from("items")
     .insert({
@@ -213,7 +279,6 @@ export async function resolveItem(
     .single();
 
   if (insertError) {
-    // unique violation on (household_id, canonical_fi) — fetch the existing one
     if (insertError.code === "23505") {
       const { data: existing } = await supabase
         .from("items")
@@ -237,7 +302,6 @@ export async function resolveItem(
     throw insertError;
   }
 
-  // 5. Seed aliases: original input + canonical SV
   const aliases = [
     { item_id: inserted.id, alias: input.toLowerCase(), lang: "fi" as const },
     {

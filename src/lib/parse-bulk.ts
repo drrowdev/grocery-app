@@ -19,26 +19,37 @@ export type ParsedBulkItem = {
   unit: UnitKey | null;
 };
 
-const SYSTEM_PROMPT = `You parse a free-text shopping list line that may contain multiple items, in Finnish, Swedish, or English. Split into individual items and extract quantity and unit when explicit.
+const SYSTEM_PROMPT = `You parse a free-text shopping list line (which may contain multiple items) in Finnish, Swedish, or English. Split into individual items and extract quantity and unit when explicit.
+
+CRITICAL: Multi-word product names must stay TOGETHER. Examples of multi-word items you must NOT split:
+- "malet kött" (Finland-Swedish for ground beef) is ONE item, not two
+- "rågbröd" is one item
+- "crème fraîche" is one item
+- "valkoinen kala" (white fish) is one item
+- "rasvaton maito" (skim milk) is one item
 
 Rules:
 - Each item: {name: string, qty: number|null, unit: enum|null}
-- Quantity is null when not specified.
+- Quantity is null when not specified. NEVER guess a quantity.
 - Unit is one of: kpl, kg, g, l, dl, ml, pkt. Use null when not specified.
-- Convert grams-style: "500g" => qty: 0.5, unit: "kg". "750ml" => qty: 0.75, unit: "l".
-- Strip articles, leading numbers, and quantity tokens from the name. Keep the item term itself raw — do NOT canonicalize ("maitoa" stays "maitoa").
-- Splits: commas, "ja"/"och"/"and", new lines.
+- Numeric+unit prefixes parse: "500g" => qty: 0.5, unit: "kg". "750ml" => qty: 0.75, unit: "l". "2pkt" => qty: 2, unit: "pkt".
+- A bare number with no unit attaches as qty only: "3 malet kött" => qty: 3, unit: null (NOT 3 kg, NOT 3 kpl).
+- Strip articles, leading numbers, and quantity tokens from the name. Keep the item term itself raw — do NOT canonicalize ("maitoa" stays "maitoa", "malet kött" stays "malet kött").
+- Splits: commas, "ja"/"och"/"and", newlines. Never split on spaces.
 
-Examples:
+Examples (study these carefully):
 "2 maitoa, ruisleipä, 500g jauheliha" -> [
   {name:"maitoa", qty:2, unit:null},
   {name:"ruisleipä", qty:null, unit:null},
   {name:"jauheliha", qty:0.5, unit:"kg"}
 ]
+"3 malet kött" -> [{name:"malet kött", qty:3, unit:null}]
+"2pkt maletkött" -> [{name:"maletkött", qty:2, unit:"pkt"}]
 "1l mehua ja 6 munaa" -> [
   {name:"mehua", qty:1, unit:"l"},
   {name:"munaa", qty:6, unit:null}
 ]
+"crème fraîche" -> [{name:"crème fraîche", qty:null, unit:null}]
 "banana" -> [{name:"banana", qty:null, unit:null}]`;
 
 const TOOL = {
@@ -81,6 +92,7 @@ export async function parseBulkInput(text: string): Promise<ParsedBulkItem[]> {
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 800,
+    temperature: 0,
     system: SYSTEM_PROMPT,
     tools: [TOOL],
     tool_choice: { type: "tool", name: TOOL.name },
