@@ -13,7 +13,7 @@ import { DEFAULT_LANG, type Lang, t, type TKey } from "@/lib/i18n";
 type Ctx = {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: TKey) => string;
+  t: (key: TKey, params?: Record<string, string | number>) => string;
 };
 
 const LangContext = createContext<Ctx | null>(null);
@@ -49,7 +49,12 @@ export function LangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ lang, setLang, t: (key: TKey) => t(key, lang) }),
+    () => ({
+      lang,
+      setLang,
+      t: (key: TKey, params?: Record<string, string | number>) =>
+        t(key, lang, params),
+    }),
     [lang, setLang],
   );
 

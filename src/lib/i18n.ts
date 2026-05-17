@@ -22,6 +22,11 @@ const dict = {
   swedish: { fi: "Ruotsi", sv: "Svenska" },
   comingSoon: { fi: "Tulossa pian", sv: "Kommer snart" },
   runningLowSoon: { fi: "Loppumassa", sv: "Snart slut" },
+  runningLowEmpty: {
+    fi: "Tee muutamia ostoksia, niin ehdotuksia alkaa tulla.",
+    sv: "Gör några inköp så börjar förslagen dyka upp.",
+  },
+  catalog: { fi: "Tuotekatalogi", sv: "Varukatalog" },
   notConfigured: {
     fi: "Sovellus ei ole vielä määritetty. Aseta Supabase- ja Anthropic-avaimet ympäristömuuttujiin.",
     sv: "Appen är inte konfigurerad ännu. Ange Supabase- och Anthropic-nycklar i miljövariablerna.",
@@ -73,7 +78,7 @@ const dict = {
     fi: "Kirjoita ensin jotain.",
     sv: "Skriv något först.",
   },
-  // Items
+  // Items / catalog
   itemsTitle: { fi: "Tuotteet", sv: "Varor" },
   addItemLabel: { fi: "Lisää tuote", sv: "Lägg till vara" },
   addItemPlaceholder: {
@@ -91,10 +96,54 @@ const dict = {
     fi: "Ei vielä tuotteita. Lisää ensimmäinen yllä olevasta kentästä.",
     sv: "Inga varor ännu. Lägg till den första i fältet ovan.",
   },
+  // Active list
+  quickAddLabel: { fi: "Lisää listalle", sv: "Lägg till på listan" },
+  quickAddPlaceholder: {
+    fi: "esim. 2 maitoa, ruisleipä, 500g jauheliha",
+    sv: "t.ex. 2 mjölk, rågbröd, 500g köttfärs",
+  },
+  quickAddHint: {
+    fi: "Useita tuotteita kerralla — pilkulla erotettuna. Käytä mikkiä myös puheella.",
+    sv: "Flera varor på en gång — separera med komma. Mikrofonen funkar också.",
+  },
+  listEmpty: {
+    fi: "Lista on tyhjä. Lisää tuotteita yllä olevasta kentästä.",
+    sv: "Listan är tom. Lägg till varor i fältet ovan.",
+  },
+  itemsAdded: {
+    fi: "Lisätty {n} tuotetta",
+    sv: "{n} varor tillagda",
+  },
+  inCart: {
+    fi: "Korissa ({n})",
+    sv: "I kundvagnen ({n})",
+  },
+  completeShopping: {
+    fi: "Vahvista ostokset ({n})",
+    sv: "Bekräfta inköpen ({n})",
+  },
+  usuallyEvery: {
+    fi: "Yleensä {n} päivän välein",
+    sv: "Vanligtvis var {n}:e dag",
+  },
+  daysAgo: {
+    fi: "{n} päivää sitten",
+    sv: "{n} dagar sedan",
+  },
 } satisfies Dict;
 
 export type TKey = keyof typeof dict;
 
-export function t(key: TKey, lang: Lang): string {
-  return dict[key][lang];
+export function t(
+  key: TKey,
+  lang: Lang,
+  params?: Record<string, string | number>,
+): string {
+  let s = dict[key][lang];
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+    }
+  }
+  return s;
 }

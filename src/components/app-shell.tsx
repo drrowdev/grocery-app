@@ -5,12 +5,16 @@ import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
 import {
+  RunningLowPanel,
+  type RunningLowItem,
+} from "@/components/running-low-panel";
+import {
   ShoppingCart,
   Sparkles,
   Refrigerator,
   Store,
   Users,
-  TrendingDown,
+  Tags,
 } from "lucide-react";
 
 const tiles = [
@@ -18,31 +22,54 @@ const tiles = [
     key: "myList" as const,
     icon: ShoppingCart,
     color: "text-emerald-600",
-    href: "/items",
+    href: "/list",
+    enabled: true,
   },
   {
     key: "quickAdd" as const,
     icon: Sparkles,
     color: "text-violet-600",
-    href: "/items",
+    href: "/list",
+    enabled: true,
   },
-  { key: "pantry" as const, icon: Refrigerator, color: "text-sky-600", href: null },
-  { key: "stores" as const, icon: Store, color: "text-amber-600", href: null },
-  { key: "household" as const, icon: Users, color: "text-rose-600", href: null },
   {
-    key: "runningLowSoon" as const,
-    icon: TrendingDown,
-    color: "text-orange-600",
+    key: "catalog" as const,
+    icon: Tags,
+    color: "text-indigo-600",
+    href: "/items",
+    enabled: true,
+  },
+  {
+    key: "pantry" as const,
+    icon: Refrigerator,
+    color: "text-sky-600",
     href: null,
+    enabled: false,
+  },
+  {
+    key: "stores" as const,
+    icon: Store,
+    color: "text-amber-600",
+    href: null,
+    enabled: false,
+  },
+  {
+    key: "household" as const,
+    icon: Users,
+    color: "text-rose-600",
+    href: null,
+    enabled: false,
   },
 ];
 
 export function AppShell({
   householdName,
   userEmail,
+  runningLow,
 }: {
   householdName: string;
   userEmail: string;
+  runningLow: RunningLowItem[];
 }) {
   const { t } = useLang();
   return (
@@ -72,8 +99,10 @@ export function AppShell({
           {t("tagline")}
         </p>
 
+        <RunningLowPanel items={runningLow} />
+
         <div className="grid grid-cols-2 gap-3">
-          {tiles.map(({ key, icon: Icon, color, href }) => {
+          {tiles.map(({ key, icon: Icon, color, href, enabled }) => {
             const inner = (
               <div className="group flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 h-full">
                 <Icon className={`h-6 w-6 ${color}`} />
@@ -82,7 +111,7 @@ export function AppShell({
                     {t(key)}
                   </p>
                   <p className="text-xs text-zinc-500 mt-1">
-                    {href ? "" : t("comingSoon")}
+                    {enabled ? "" : t("comingSoon")}
                   </p>
                 </div>
               </div>
