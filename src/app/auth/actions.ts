@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 async function getOrigin(): Promise<string> {
-  // Prefer explicit env var (set in production); otherwise derive from headers.
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
   }
@@ -35,6 +34,43 @@ export async function signInWithMagicLink(formData: FormData) {
     return { error: "generic" as const };
   }
   return { ok: true as const };
+}
+
+/**
+ * Verify the 6-digit email OTP code. On success, the user is signed in.
+ */
+export async function verifyEmailOtp(
+  email: string,
+  token: string,
+): Promise<
+  | { ok: true }
+  | { ok: false; error: "invalid_input" | "invalid_code" | "generic"; message?: string }
+> {
+  const cleanedEmail = email.trim().toLowerCase();
+  const cleanedToken = token.replace(/\s+/g, "");
+  if (!cleanedEmail || !cleanedToken || cleanedToken.length < 4) {
+    return { ok: false, error: "invalid_input" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({
+    email: cleanedEmail,
+    token: cleanedToken,
+    type: "email",
+  });
+
+  if (error) {
+    console.error("verifyOtp error:", error.message);
+    if (
+      error.message.toLowerCase().includes("invalid") ||
+      error.message.toLowerCase().includes("expired") ||
+      error.message.toLowerCase().includes("token")
+    ) {
+      return { ok: false, error: "invalid_code", message: error.message };
+    }
+    return { ok: false, error: "generic", message: error.message };
+  }
+  return { ok: true };
 }
 
 export async function signOut() {

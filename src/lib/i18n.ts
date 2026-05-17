@@ -50,6 +50,38 @@ const dict = {
     fi: "Saat kertakäyttöisen kirjautumislinkin sähköpostiisi.",
     sv: "Du får en engångs-inloggningslänk till din e-post.",
   },
+  signInSubtitleCode: {
+    fi: "Lähetämme sinulle 6-numeroisen kirjautumiskoodin.",
+    sv: "Vi skickar dig en 6-siffrig inloggningskod.",
+  },
+  sendCode: { fi: "Lähetä koodi", sv: "Skicka kod" },
+  codeSentTitle: { fi: "Anna koodi", sv: "Ange koden" },
+  codeSentTo: {
+    fi: "Lähetimme 6-numeroisen koodin osoitteeseen",
+    sv: "Vi skickade en 6-siffrig kod till",
+  },
+  codeSentHint: {
+    fi: "Koodi on voimassa noin tunnin. Tarkista myös roskaposti.",
+    sv: "Koden gäller i cirka en timme. Kolla även skräpposten.",
+  },
+  codeLabel: { fi: "Koodi", sv: "Kod" },
+  verify: { fi: "Vahvista", sv: "Verifiera" },
+  invalidCode: {
+    fi: "Koodi on virheellinen tai vanhentunut.",
+    sv: "Koden är felaktig eller har gått ut.",
+  },
+  resendCode: {
+    fi: "Lähetä uusi koodi",
+    sv: "Skicka en ny kod",
+  },
+  codeResent: {
+    fi: "Uusi koodi lähetetty.",
+    sv: "Ny kod skickad.",
+  },
+  changeEmail: {
+    fi: "Vaihda sähköpostiosoite",
+    sv: "Ändra e-postadressen",
+  },
   // Households
   createHouseholdTitle: {
     fi: "Luo ensimmäinen taloutesi",
