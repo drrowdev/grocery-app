@@ -13,6 +13,14 @@ export type RunningLowItem = {
   avg_cycle_days: number | null;
   avg_qty: number | null;
   unit: string;
+  default_qty: number;
+  category: {
+    key: string;
+    name_fi: string;
+    name_sv: string;
+    icon: string | null;
+    sort_order: number;
+  } | null;
   last_purchased_at: string | null;
 };
 

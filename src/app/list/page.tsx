@@ -32,6 +32,15 @@ export type QuickSuggestion = {
   item_id: string;
   canonical_fi: string;
   canonical_sv: string;
+  unit: string;
+  default_qty: number;
+  category: {
+    key: string;
+    name_fi: string;
+    name_sv: string;
+    icon: string | null;
+    sort_order: number;
+  } | null;
 };
 
 export default async function ListPage() {
@@ -71,7 +80,7 @@ export default async function ListPage() {
     const { data: topRaw } = await supabase
       .from("consumption_profiles")
       .select(
-        "item_id, sample_count, item:items(canonical_fi, canonical_sv)",
+        "item_id, sample_count, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key, name_fi, name_sv, icon, sort_order))",
       )
       .eq("household_id", household.id)
       .order("sample_count", { ascending: false })
@@ -80,7 +89,19 @@ export default async function ListPage() {
     type TopRow = {
       item_id: string;
       sample_count: number;
-      item: { canonical_fi: string; canonical_sv: string } | null;
+      item: {
+        canonical_fi: string;
+        canonical_sv: string;
+        unit: string;
+        default_qty: number;
+        category: {
+          key: string;
+          name_fi: string;
+          name_sv: string;
+          icon: string | null;
+          sort_order: number;
+        } | null;
+      } | null;
     };
 
     quickSuggestions = ((topRaw ?? []) as unknown as TopRow[])
@@ -90,6 +111,9 @@ export default async function ListPage() {
         item_id: r.item_id,
         canonical_fi: r.item!.canonical_fi,
         canonical_sv: r.item!.canonical_sv,
+        unit: r.item!.unit,
+        default_qty: Number(r.item!.default_qty),
+        category: r.item!.category,
       }));
 
     // Running low predictions for items not yet on the active list.
@@ -97,7 +121,7 @@ export default async function ListPage() {
     const { data: lowRaw } = await supabase
       .from("consumption_profiles")
       .select(
-        "item_id, avg_cycle_days, avg_qty, last_purchased_at, item:items(canonical_fi, canonical_sv, unit)",
+        "item_id, avg_cycle_days, avg_qty, last_purchased_at, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key, name_fi, name_sv, icon, sort_order))",
       )
       .eq("household_id", household.id)
       .eq("is_recurring", true)
@@ -110,7 +134,19 @@ export default async function ListPage() {
       avg_cycle_days: number | null;
       avg_qty: number | null;
       last_purchased_at: string | null;
-      item: { canonical_fi: string; canonical_sv: string; unit: string } | null;
+      item: {
+        canonical_fi: string;
+        canonical_sv: string;
+        unit: string;
+        default_qty: number;
+        category: {
+          key: string;
+          name_fi: string;
+          name_sv: string;
+          icon: string | null;
+          sort_order: number;
+        } | null;
+      } | null;
     };
     runningLow = ((lowRaw ?? []) as unknown as LowRow[])
       .filter((r) => r.item && !onListIds.has(r.item_id))
@@ -121,6 +157,8 @@ export default async function ListPage() {
         avg_cycle_days: r.avg_cycle_days,
         avg_qty: r.avg_qty,
         unit: r.item!.unit,
+        default_qty: Number(r.item!.default_qty),
+        category: r.item!.category,
         last_purchased_at: r.last_purchased_at,
       }));
   } catch (e) {

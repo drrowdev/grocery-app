@@ -27,7 +27,6 @@ import { capitalizeFirst, UNIT_OPTIONS } from "@/lib/utils";
 import { getItemEmoji } from "@/lib/item-emoji";
 import { signOut } from "@/app/auth/actions";
 import {
-  addSuggested,
   completeList,
   editListItem,
   quickAdd,
@@ -41,6 +40,12 @@ const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
 
 const FALLBACK_SUGGESTIONS = ["maitoa", "ruisleipä", "kahvi", "kananmuna", "banaani"];
+
+let tempCounter = 0;
+function nextTempId(): string {
+  tempCounter = (tempCounter + 1) % 1_000_000;
+  return `temp-${tempCounter}`;
+}
 
 export function ListView({
   householdName,
@@ -165,11 +170,18 @@ export function ListView({
     () => new Set(items.map((r) => r.item.id)),
     [items],
   );
-  const suggestions = useMemo(() => {
-    const filtered = initialSuggestions.filter((s) => !onListIds.has(s.item_id));
+  type Suggestion =
+    | (QuickSuggestion & { kind: "known" })
+    | { kind: "fallback"; item_id: string; canonical_fi: string; canonical_sv: string };
+
+  const suggestions = useMemo<Suggestion[]>(() => {
+    const filtered = initialSuggestions
+      .filter((s) => !onListIds.has(s.item_id))
+      .map((s) => ({ ...s, kind: "known" as const }));
     if (filtered.length > 0) return filtered;
     // Fallback for brand-new households: hardcoded starter suggestions.
     return FALLBACK_SUGGESTIONS.map((s) => ({
+      kind: "fallback" as const,
       item_id: `fallback:${s}`,
       canonical_fi: s,
       canonical_sv: s,
@@ -196,6 +208,57 @@ export function ListView({
     } catch {
       await refresh();
     }
+  }
+
+  /**
+   * Instant chip-tap path: build an optimistic row from data we already have,
+   * then write directly via the browser Supabase client (no Next.js server
+   * roundtrip, no Claude). Reconcile via realtime/refresh afterwards.
+   */
+  function addByItemFast(opts: {
+    item_id: string;
+    canonical_fi: string;
+    canonical_sv: string;
+    unit: string;
+    default_qty: number;
+    category: ListItemRow["item"]["category"];
+  }) {
+    if (items.some((r) => r.item.id === opts.item_id)) return;
+
+    buzz(15);
+    const tempId = nextTempId();
+    const optimisticRow: ListItemRow = {
+      id: tempId,
+      qty: opts.default_qty,
+      unit: opts.unit,
+      checked: false,
+      note: null,
+      item: {
+        id: opts.item_id,
+        canonical_fi: opts.canonical_fi,
+        canonical_sv: opts.canonical_sv,
+        category: opts.category,
+      },
+    };
+    setItems((prev) => [...prev, optimisticRow]);
+
+    void (async () => {
+      const supabase = createClient();
+      const { error } = await supabase.from("list_items").insert({
+        list_id: listId,
+        item_id: opts.item_id,
+        qty: opts.default_qty,
+        unit: opts.unit,
+      });
+      if (error) {
+        // Roll back if the write failed
+        setItems((prev) => prev.filter((r) => r.id !== tempId));
+        setError(`${t("errorGeneric")} (${error.message})`);
+        return;
+      }
+      // Re-fetch to replace the temp row with the persisted one (gets real id, etc.)
+      await refresh();
+    })();
   }
 
   async function handleEdit(
@@ -316,14 +379,31 @@ export function ListView({
               {suggestions.map((s) => {
                 const label =
                   lang === "fi" ? s.canonical_fi : s.canonical_sv;
-                const emoji = getItemEmoji(s.canonical_fi, null);
+                const emoji = getItemEmoji(
+                  s.canonical_fi,
+                  s.kind === "known" ? s.category?.key : null,
+                );
                 return (
                   <button
                     key={s.item_id}
                     type="button"
-                    onClick={() => submitQuickAdd(s.canonical_fi)}
-                    disabled={pending}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 active:scale-95 disabled:opacity-60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    onClick={() => {
+                      if (s.kind === "known") {
+                        addByItemFast({
+                          item_id: s.item_id,
+                          canonical_fi: s.canonical_fi,
+                          canonical_sv: s.canonical_sv,
+                          unit: s.unit,
+                          default_qty: s.default_qty,
+                          category: s.category,
+                        });
+                      } else {
+                        // Fallback chip — no item_id yet; go through the
+                        // full categorization path so the item gets created.
+                        submitQuickAdd(s.canonical_fi);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 active:scale-95 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
                   >
                     <span aria-hidden="true">{emoji}</span>
                     {capitalizeFirst(label)}
@@ -353,19 +433,25 @@ export function ListView({
               {runningLow.map((it) => {
                 const label =
                   lang === "fi" ? it.canonical_fi : it.canonical_sv;
-                const emoji = getItemEmoji(it.canonical_fi, null);
+                const emoji = getItemEmoji(
+                  it.canonical_fi,
+                  it.category?.key,
+                );
                 return (
                   <button
                     key={it.item_id}
                     type="button"
                     onClick={() =>
-                      startTransition(async () => {
-                        await addSuggested(it.item_id);
-                        await refresh();
+                      addByItemFast({
+                        item_id: it.item_id,
+                        canonical_fi: it.canonical_fi,
+                        canonical_sv: it.canonical_sv,
+                        unit: it.unit,
+                        default_qty: it.default_qty,
+                        category: it.category,
                       })
                     }
-                    disabled={pending}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-xs font-medium text-orange-900 transition hover:bg-orange-100 active:scale-95 disabled:opacity-60 dark:border-orange-900/50 dark:bg-zinc-900 dark:text-orange-200"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-xs font-medium text-orange-900 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-zinc-900 dark:text-orange-200"
                   >
                     <span aria-hidden="true">{emoji}</span>
                     {capitalizeFirst(label)}
