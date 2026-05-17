@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAnthropic, CLAUDE_MODEL } from "@/lib/anthropic";
 import { createClient } from "@/lib/supabase/server";
 import { lookupDict } from "@/lib/grocery-dict";
+import { toFinlandSwedish, finlandSwedishToFinnish } from "@/lib/fsob";
 
 export const CATEGORY_KEYS = [
   "produce",
@@ -102,7 +103,8 @@ export async function categorizeWithClaude(input: string): Promise<ClaudeItem> {
 
 /**
  * Categorize via local dictionary first (free, deterministic, Finland-Swedish
- * correct), and fall back to Claude only for the long tail.
+ * correct), then Claude for the long tail. Always post-correct the resulting
+ * Swedish form to Finland-Swedish (finlandssvenska) using FSOB.
  */
 async function categorize(input: string): Promise<ClaudeItem> {
   const dictHit = lookupDict(input);
@@ -115,7 +117,24 @@ async function categorize(input: string): Promise<ClaudeItem> {
       default_qty: dictHit.default_qty,
     };
   }
-  return categorizeWithClaude(input);
+
+  const fromClaude = await categorizeWithClaude(input);
+
+  // FSOB post-correction: if Claude returned a rikssvenska form, swap to FI-SV.
+  // Also: if the swap yields a known Finland-Swedish form, fix canonical_fi
+  // when Claude's Finnish doesn't match the FSOB-known Finnish for that FI-SV.
+  const correctedSv = toFinlandSwedish(fromClaude.canonical_sv);
+  let correctedFi = fromClaude.canonical_fi;
+  if (correctedSv !== fromClaude.canonical_sv) {
+    const knownFi = finlandSwedishToFinnish(correctedSv);
+    if (knownFi) correctedFi = knownFi;
+  }
+
+  return {
+    ...fromClaude,
+    canonical_fi: correctedFi,
+    canonical_sv: correctedSv,
+  };
 }
 
 export type ResolvedItem = {
