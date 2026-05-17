@@ -37,20 +37,38 @@ export type ClaudeItem = z.infer<typeof ClaudeItemSchema>;
 
 const SYSTEM_PROMPT = `You categorize grocery items for a Finnish/Swedish shopping list app.
 
-Given a free-text user input (in Finnish, Swedish, or English), return one normalized grocery item.
-- canonical_fi: the standard Finnish singular nominative name (e.g. "maito", "ruisleipä", "lohifile")
-- canonical_sv: the standard Swedish singular name (e.g. "mjölk", "rågbröd", "laxfilé")
+The user input may be in Finnish, Swedish, English, or a mix. Recognize the source language by the words themselves (not just orthography) and translate to the **actual** Finnish and Swedish supermarket terms — do NOT invent Finnish words by phonetic transliteration of Swedish stems.
+
+Common Swedish → Finnish you must know:
+- "köttfärs", "malet kött", "maletkött" → canonical_fi: "jauheliha", canonical_sv: "köttfärs"
+- "mjölk" → "maito" / "mjölk"
+- "ägg" → "kananmuna" / "ägg"
+- "bröd" → "leipä" / "bröd"
+- "rågbröd" → "ruisleipä" / "rågbröd"
+- "lax", "laxfilé" → "lohi" / "lax"
+- "smör" → "voi" / "smör"
+- "ost" → "juusto" / "ost"
+- "potatis" → "peruna" / "potatis"
+- "morötter" → "porkkana" / "morot"
+- "lök" → "sipuli" / "lök"
+- "kyckling" → "kana" / "kyckling"
+- "fläsk" → "sianliha" / "fläsk"
+
+Return fields:
+- canonical_fi: standard Finnish singular nominative ("maito", "ruisleipä", "lohifile")
+- canonical_sv: standard Swedish singular ("mjölk", "rågbröd", "laxfilé")
 - category_key: one of: produce, meat, fish, dairy, bakery, frozen, dry_goods, canned, spices, drinks, snacks, household, hygiene, other
-- unit: the natural counting unit (kpl=pieces, kg, g, l, dl, ml, pkt=package)
-- default_qty: a sensible default quantity in that unit (e.g. milk: 1 l, eggs: 6 kpl, mince: 0.5 kg)
+- unit: kpl (pieces), kg, g, l, dl, ml, pkt (package)
+- default_qty: sensible default in that unit (milk: 1 l, eggs: 6 kpl, mince: 0.5 kg)
 
 Examples:
 "maitoa" -> {canonical_fi: "maito", canonical_sv: "mjölk", category_key: "dairy", unit: "l", default_qty: 1}
+"maletkött" -> {canonical_fi: "jauheliha", canonical_sv: "köttfärs", category_key: "meat", unit: "kg", default_qty: 0.5}
 "500g jauheliha" -> {canonical_fi: "jauheliha", canonical_sv: "köttfärs", category_key: "meat", unit: "kg", default_qty: 0.5}
 "ruisleipä" -> {canonical_fi: "ruisleipä", canonical_sv: "rågbröd", category_key: "bakery", unit: "kpl", default_qty: 1}
 "banana" -> {canonical_fi: "banaani", canonical_sv: "banan", category_key: "produce", unit: "kpl", default_qty: 4}
 
-Always return one tool call with valid arguments. Be confident: if the term is ambiguous, pick the most common Finnish supermarket interpretation.`;
+Always return one tool call with valid arguments. Be confident: if the term is ambiguous, pick the most common Finnish supermarket interpretation. NEVER output a Finnish word that doesn't exist in real Finnish — if unsure, ask yourself whether the word would appear on a Finnish supermarket shelf.`;
 
 const TOOL_DEFINITION = {
   name: "register_grocery_item",

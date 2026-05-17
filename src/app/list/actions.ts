@@ -93,6 +93,123 @@ export async function updateListItem(
   revalidatePath("/list");
 }
 
+/**
+ * Edit a list row's name + qty + unit in one call.
+ * If `name` resolves (via DB match or Claude) to a different item than the
+ * row currently references, the row is swapped to that item.
+ * Returns the new canonical FI/SV names so the client can show feedback.
+ */
+export async function editListItem(
+  listItemId: string,
+  patch: { name?: string; qty?: number; unit?: string },
+): Promise<
+  | { ok: true; canonical_fi: string; canonical_sv: string; swapped: boolean }
+  | { ok: false; error: string; message?: string }
+> {
+  const supabase = await createClient();
+
+  // Load the row + current item
+  const { data: row, error: loadErr } = await supabase
+    .from("list_items")
+    .select(
+      "id, list_id, qty, unit, item_id, items!inner(household_id, canonical_fi, canonical_sv)",
+    )
+    .eq("id", listItemId)
+    .single();
+
+  if (loadErr || !row) {
+    return { ok: false, error: "not_found", message: loadErr?.message };
+  }
+
+  type ItemMini = {
+    household_id: string;
+    canonical_fi: string;
+    canonical_sv: string;
+  };
+  const currentItem = row.items as unknown as ItemMini;
+
+  let nextItemId = row.item_id as string;
+  let canonical_fi = currentItem.canonical_fi;
+  let canonical_sv = currentItem.canonical_sv;
+  let swapped = false;
+
+  if (patch.name && patch.name.trim()) {
+    const trimmed = patch.name.trim();
+    const currentMatch =
+      trimmed.toLowerCase() === currentItem.canonical_fi.toLowerCase() ||
+      trimmed.toLowerCase() === currentItem.canonical_sv.toLowerCase();
+
+    if (!currentMatch) {
+      try {
+        const resolved = await resolveItem(currentItem.household_id, trimmed);
+        if (resolved.id !== row.item_id) {
+          nextItemId = resolved.id;
+          swapped = true;
+        }
+        canonical_fi = resolved.canonical_fi;
+        canonical_sv = resolved.canonical_sv;
+      } catch (e) {
+        return {
+          ok: false,
+          error: "categorize_failed",
+          message: e instanceof Error ? e.message : String(e),
+        };
+      }
+    }
+  }
+
+  const update: Record<string, unknown> = {};
+  if (swapped) update.item_id = nextItemId;
+  if (typeof patch.qty === "number" && patch.qty > 0) update.qty = patch.qty;
+  if (typeof patch.unit === "string") update.unit = patch.unit;
+
+  if (Object.keys(update).length > 0) {
+    // If swapping to an item that's already on the list, we'd violate the
+    // (list_id, item_id) unique constraint. Detect and merge: delete current,
+    // bump qty on the existing target row.
+    if (swapped) {
+      const { data: existing } = await supabase
+        .from("list_items")
+        .select("id, qty, unit")
+        .eq("list_id", row.list_id as string)
+        .eq("item_id", nextItemId)
+        .neq("id", listItemId)
+        .maybeSingle();
+
+      if (existing) {
+        const sameUnit =
+          existing.unit === (patch.unit ?? row.unit);
+        const finalQty = sameUnit
+          ? Number(existing.qty) + (patch.qty ?? Number(row.qty))
+          : (patch.qty ?? Number(row.qty));
+        await supabase
+          .from("list_items")
+          .update({
+            qty: finalQty,
+            unit: patch.unit ?? row.unit,
+            checked: false,
+            checked_at: null,
+          })
+          .eq("id", existing.id);
+        await supabase.from("list_items").delete().eq("id", listItemId);
+        revalidatePath("/list");
+        return { ok: true, canonical_fi, canonical_sv, swapped: true };
+      }
+    }
+
+    const { error: updateErr } = await supabase
+      .from("list_items")
+      .update(update)
+      .eq("id", listItemId);
+    if (updateErr) {
+      return { ok: false, error: "update_failed", message: updateErr.message };
+    }
+  }
+
+  revalidatePath("/list");
+  return { ok: true, canonical_fi, canonical_sv, swapped };
+}
+
 export async function toggleListItem(listItemId: string, checked: boolean) {
   const supabase = await createClient();
   await supabase

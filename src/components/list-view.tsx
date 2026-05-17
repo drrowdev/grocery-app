@@ -11,7 +11,6 @@ import {
   Plus,
   Sparkles,
   Trash2,
-  X,
 } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
@@ -21,10 +20,10 @@ import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst, UNIT_OPTIONS } from "@/lib/utils";
 import {
   completeList,
+  editListItem,
   quickAdd,
   removeListItem,
   toggleListItem,
-  updateListItem,
 } from "@/app/list/actions";
 import type { ListItemRow } from "@/app/list/page";
 
@@ -149,15 +148,17 @@ export function ListView({
     }
   }
 
-  async function handleUpdate(rowId: string, qty: number, unit: string) {
-    setItems((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, qty, unit } : r)),
-    );
-    try {
-      await updateListItem(rowId, { qty, unit });
-    } catch {
-      await refresh();
+  async function handleEdit(
+    rowId: string,
+    name: string,
+    qty: number,
+    unit: string,
+  ) {
+    const res = await editListItem(rowId, { name, qty, unit });
+    if (!res.ok) {
+      setError(`${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`);
     }
+    await refresh();
   }
 
   return (
@@ -260,7 +261,9 @@ export function ListView({
                       lang={lang}
                       onToggle={() => handleToggle(row.id, true)}
                       onRemove={() => handleRemove(row.id)}
-                      onUpdate={(qty, unit) => handleUpdate(row.id, qty, unit)}
+                      onEdit={(name, qty, unit) =>
+                        handleEdit(row.id, name, qty, unit)
+                      }
                     />
                   ))}
                 </ul>
@@ -282,7 +285,9 @@ export function ListView({
                       checkedStyle
                       onToggle={() => handleToggle(row.id, false)}
                       onRemove={() => handleRemove(row.id)}
-                      onUpdate={(qty, unit) => handleUpdate(row.id, qty, unit)}
+                      onEdit={(name, qty, unit) =>
+                        handleEdit(row.id, name, qty, unit)
+                      }
                     />
                   ))}
                 </ul>
@@ -330,76 +335,91 @@ function ListRow({
   lang,
   onToggle,
   onRemove,
-  onUpdate,
+  onEdit,
   checkedStyle = false,
 }: {
   row: ListItemRow;
   lang: "fi" | "sv";
   onToggle: () => Promise<void> | void;
   onRemove: () => Promise<void> | void;
-  onUpdate: (qty: number, unit: string) => Promise<void> | void;
+  onEdit: (
+    name: string,
+    qty: number,
+    unit: string,
+  ) => Promise<void> | void;
   checkedStyle?: boolean;
 }) {
   const { t } = useLang();
-  const [draft, setDraft] = useState<{ qty: string; unit: string } | null>(
-    null,
-  );
+  const [draft, setDraft] = useState<
+    { name: string; qty: string; unit: string } | null
+  >(null);
+  const [busy, setBusy] = useState(false);
 
   const name =
     lang === "fi" ? row.item.canonical_fi : row.item.canonical_sv;
 
   if (draft) {
     return (
-      <li className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50/60 dark:bg-emerald-950/20">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50 truncate">
-            {capitalizeFirst(name)}
-          </p>
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={draft.qty}
-              onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
-              className="w-20 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-              autoFocus
-            />
-            <select
-              value={draft.unit}
-              onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
-              className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+      <li className="flex flex-col gap-2 px-3 py-3 bg-emerald-50/60 dark:bg-emerald-950/20">
+        <input
+          type="text"
+          value={draft.name}
+          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          autoFocus
+          placeholder={t("addItemPlaceholder")}
+        />
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={draft.qty}
+            onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
+            className="w-24 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          />
+          <select
+            value={draft.unit}
+            onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
+            className="rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          >
+            {UNIT_OPTIONS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setDraft(null)}
+              disabled={busy}
+              className="rounded-md px-2.5 py-1.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              {UNIT_OPTIONS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                const n = parseFloat(draft.qty.replace(",", "."));
+                if (!(Number.isFinite(n) && n > 0)) return;
+                setBusy(true);
+                await onEdit(draft.name.trim() || name, n, draft.unit);
+                setBusy(false);
+                setDraft(null);
+              }}
+              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              {t("save")}
+            </button>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const n = parseFloat(draft.qty.replace(",", "."));
-            if (Number.isFinite(n) && n > 0) {
-              void onUpdate(n, draft.unit);
-            }
-            setDraft(null);
-          }}
-          className="rounded-md bg-emerald-600 p-1.5 text-white shadow-sm transition hover:bg-emerald-700"
-          aria-label={t("save")}
-        >
-          <Check className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setDraft(null)}
-          className="rounded-md p-1.5 text-zinc-500 transition hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          aria-label={t("cancel")}
-        >
-          <X className="h-4 w-4" />
-        </button>
       </li>
     );
   }
@@ -418,18 +438,25 @@ function ListRow({
       >
         {checkedStyle && <Check className="h-4 w-4" />}
       </button>
-      <p
-        className={`min-w-0 flex-1 text-sm font-medium truncate ${
-          checkedStyle
-            ? "text-zinc-400 line-through dark:text-zinc-500"
-            : "text-zinc-900 dark:text-zinc-50"
-        }`}
-      >
-        {capitalizeFirst(name)}
-      </p>
       <button
         type="button"
-        onClick={() => setDraft({ qty: String(row.qty), unit: row.unit })}
+        onClick={() =>
+          setDraft({ name, qty: String(row.qty), unit: row.unit })
+        }
+        className={`min-w-0 flex-1 text-left text-sm font-medium truncate transition ${
+          checkedStyle
+            ? "text-zinc-400 line-through dark:text-zinc-500"
+            : "text-zinc-900 hover:text-emerald-700 dark:text-zinc-50 dark:hover:text-emerald-400"
+        }`}
+        aria-label={t("edit")}
+      >
+        {capitalizeFirst(name)}
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          setDraft({ name, qty: String(row.qty), unit: row.unit })
+        }
         className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums transition ${
           checkedStyle
             ? "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
