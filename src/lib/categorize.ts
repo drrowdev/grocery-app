@@ -121,9 +121,7 @@ async function categorize(input: string): Promise<ClaudeItem> {
 
   const fromClaude = await categorizeWithClaude(input);
 
-  // FSOB post-correction: if Claude returned a rikssvenska form, swap to FI-SV.
-  // Also: if the swap yields a known Finland-Swedish form, fix canonical_fi
-  // when Claude's Finnish doesn't match the FSOB-known Finnish for that FI-SV.
+  // FSOB post-correction: rikssvenska canonical_sv -> Finland-Swedish.
   const correctedSv = toFinlandSwedish(fromClaude.canonical_sv);
   let correctedFi = fromClaude.canonical_fi;
   if (correctedSv !== fromClaude.canonical_sv) {
@@ -131,10 +129,27 @@ async function categorize(input: string): Promise<ClaudeItem> {
     if (knownFi) correctedFi = knownFi;
   }
 
+  // Default-unit override for meat/fish: in Finnish supermarkets these are
+  // sold in vacuum packs. If the user didn't specify a weight (g/kg/ml/l),
+  // the parser strips numeric prefixes BEFORE calling categorize, so any
+  // weight intent is captured at the parser stage as an explicit unit on
+  // the parsed item. Here we just ensure Claude's default unit isn't kg.
+  let unit = fromClaude.unit;
+  let default_qty = fromClaude.default_qty;
+  if (
+    (fromClaude.category_key === "meat" || fromClaude.category_key === "fish") &&
+    unit === "kg"
+  ) {
+    unit = "pkt";
+    default_qty = 1;
+  }
+
   return {
     ...fromClaude,
     canonical_fi: correctedFi,
     canonical_sv: correctedSv,
+    unit,
+    default_qty,
   };
 }
 

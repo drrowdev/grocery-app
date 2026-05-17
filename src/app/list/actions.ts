@@ -44,6 +44,9 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
     for (const p of parsed) {
       const resolved = await resolveItem(household.id, p.name);
       const qty = p.qty ?? resolved.default_qty;
+      // If the parser already extracted an explicit unit (e.g. "500g" -> kg),
+      // honor it. Otherwise use the canonical unit from the dictionary/Claude.
+      // For meat/fish without explicit weight this means "pkt".
       const unit = p.unit ?? resolved.unit;
 
       const { data: existing } = await supabase
