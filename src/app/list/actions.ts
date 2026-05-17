@@ -79,6 +79,20 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
   }
 }
 
+export async function updateListItem(
+  listItemId: string,
+  patch: { qty?: number; unit?: string },
+) {
+  const supabase = await createClient();
+  const update: Record<string, unknown> = {};
+  if (typeof patch.qty === "number" && patch.qty > 0) update.qty = patch.qty;
+  if (typeof patch.unit === "string") update.unit = patch.unit;
+  if (Object.keys(update).length === 0) return;
+
+  await supabase.from("list_items").update(update).eq("id", listItemId);
+  revalidatePath("/list");
+}
+
 export async function toggleListItem(listItemId: string, checked: boolean) {
   const supabase = await createClient();
   await supabase

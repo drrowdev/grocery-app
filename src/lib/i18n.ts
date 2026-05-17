@@ -130,6 +130,9 @@ const dict = {
     fi: "{n} päivää sitten",
     sv: "{n} dagar sedan",
   },
+  edit: { fi: "Muokkaa", sv: "Redigera" },
+  save: { fi: "Tallenna", sv: "Spara" },
+  cancel: { fi: "Peruuta", sv: "Avbryt" },
 } satisfies Dict;
 
 export type TKey = keyof typeof dict;

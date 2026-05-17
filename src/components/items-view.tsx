@@ -7,6 +7,7 @@ import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
 import { addItem, deleteItem } from "@/app/items/actions";
+import { capitalizeFirst } from "@/lib/utils";
 
 type ItemRow = {
   id: string;
@@ -158,7 +159,11 @@ export function ItemsView({
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50 truncate">
-                          {lang === "fi" ? item.canonical_fi : item.canonical_sv}
+                          {capitalizeFirst(
+                            lang === "fi"
+                              ? item.canonical_fi
+                              : item.canonical_sv,
+                          )}
                         </p>
                         <p className="text-xs text-zinc-500">
                           {lang === "fi" ? item.canonical_sv : item.canonical_fi}

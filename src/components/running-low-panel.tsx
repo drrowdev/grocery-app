@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { TrendingDown, Plus, Loader2 } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { addSuggested } from "@/app/list/actions";
+import { capitalizeFirst } from "@/lib/utils";
 
 export type RunningLowItem = {
   item_id: string;
@@ -51,7 +52,9 @@ export function RunningLowPanel({ items }: { items: RunningLowItem[] }) {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50 truncate">
-                    {lang === "fi" ? it.canonical_fi : it.canonical_sv}
+                    {capitalizeFirst(
+                      lang === "fi" ? it.canonical_fi : it.canonical_sv,
+                    )}
                   </p>
                   <p className="text-xs text-zinc-500 truncate">
                     {it.avg_cycle_days
