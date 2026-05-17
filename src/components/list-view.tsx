@@ -577,6 +577,14 @@ function ListRow({
           {formatQty(row.qty)} {row.unit}
           <Pencil className="h-3 w-3 opacity-60" />
         </button>
+        <button
+          type="button"
+          onClick={() => void onRemove()}
+          className="rounded-md p-1.5 text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
+          aria-label={t("remove")}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </li>
     </SwipeableRow>
   );

@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -36,6 +37,15 @@ export function SwipeableRow({
 }) {
   const [offset, setOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  // Only enable swipe on touch devices; mouse-drag swipe on desktop feels
+  // unintuitive and competes with text selection.
+  const touchEnabled = useSyncExternalStore(
+    () => () => {},
+    () =>
+      "ontouchstart" in window ||
+      (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0),
+    () => false,
+  );
   const startX = useRef(0);
   const startY = useRef(0);
   const axis = useRef<"x" | "y" | null>(null);
@@ -43,6 +53,8 @@ export function SwipeableRow({
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (disabled) return;
+    // Skip mouse on non-touch devices; desktop uses the explicit buttons.
+    if (e.pointerType === "mouse" && !touchEnabled) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     setIsDragging(true);
     fired.current = false;
