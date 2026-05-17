@@ -69,6 +69,28 @@ const dict = {
     fi: "Tarkista sähköpostiosoite.",
     sv: "Kontrollera e-postadressen.",
   },
+  errorEmpty: {
+    fi: "Kirjoita ensin jotain.",
+    sv: "Skriv något först.",
+  },
+  // Items
+  itemsTitle: { fi: "Tuotteet", sv: "Varor" },
+  addItemLabel: { fi: "Lisää tuote", sv: "Lägg till vara" },
+  addItemPlaceholder: {
+    fi: "esim. maitoa tai 500g jauheliha",
+    sv: "t.ex. mjölk eller 500g köttfärs",
+  },
+  addItemHint: {
+    fi: "Tekoäly tunnistaa tuotteen ja luokittelee sen automaattisesti.",
+    sv: "AI känner igen varan och kategoriserar den automatiskt.",
+  },
+  add: { fi: "Lisää", sv: "Lägg till" },
+  itemAdded: { fi: "Lisätty", sv: "Tillagd" },
+  itemMatched: { fi: "Tunnistettu", sv: "Identifierad" },
+  itemsEmpty: {
+    fi: "Ei vielä tuotteita. Lisää ensimmäinen yllä olevasta kentästä.",
+    sv: "Inga varor ännu. Lägg till den första i fältet ovan.",
+  },
 } satisfies Dict;
 
 export type TKey = keyof typeof dict;

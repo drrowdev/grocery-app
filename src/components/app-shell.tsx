@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -13,15 +14,26 @@ import {
 } from "lucide-react";
 
 const tiles = [
-  { key: "myList" as const, icon: ShoppingCart, color: "text-emerald-600" },
-  { key: "quickAdd" as const, icon: Sparkles, color: "text-violet-600" },
-  { key: "pantry" as const, icon: Refrigerator, color: "text-sky-600" },
-  { key: "stores" as const, icon: Store, color: "text-amber-600" },
-  { key: "household" as const, icon: Users, color: "text-rose-600" },
+  {
+    key: "myList" as const,
+    icon: ShoppingCart,
+    color: "text-emerald-600",
+    href: "/items",
+  },
+  {
+    key: "quickAdd" as const,
+    icon: Sparkles,
+    color: "text-violet-600",
+    href: "/items",
+  },
+  { key: "pantry" as const, icon: Refrigerator, color: "text-sky-600", href: null },
+  { key: "stores" as const, icon: Store, color: "text-amber-600", href: null },
+  { key: "household" as const, icon: Users, color: "text-rose-600", href: null },
   {
     key: "runningLowSoon" as const,
     icon: TrendingDown,
     color: "text-orange-600",
+    href: null,
   },
 ];
 
@@ -61,20 +73,28 @@ export function AppShell({
         </p>
 
         <div className="grid grid-cols-2 gap-3">
-          {tiles.map(({ key, icon: Icon, color }) => (
-            <div
-              key={key}
-              className="group flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <Icon className={`h-6 w-6 ${color}`} />
-              <div>
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  {t(key)}
-                </p>
-                <p className="text-xs text-zinc-500 mt-1">{t("comingSoon")}</p>
+          {tiles.map(({ key, icon: Icon, color, href }) => {
+            const inner = (
+              <div className="group flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 h-full">
+                <Icon className={`h-6 w-6 ${color}`} />
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    {t(key)}
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {href ? "" : t("comingSoon")}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+            return href ? (
+              <Link key={key} href={href} className="block">
+                {inner}
+              </Link>
+            ) : (
+              <div key={key}>{inner}</div>
+            );
+          })}
         </div>
       </main>
 
