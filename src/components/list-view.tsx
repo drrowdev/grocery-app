@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -24,6 +24,9 @@ import {
 } from "@/app/list/actions";
 import type { ListItemRow } from "@/app/list/page";
 
+const LIST_ITEM_SELECT =
+  "id, qty, unit, checked, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
+
 export function ListView({
   householdName,
   listId,
@@ -40,7 +43,18 @@ export function ListView({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Realtime sync — listen to list_items changes for this list
+  const refresh = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("list_items")
+      .select(LIST_ITEM_SELECT)
+      .eq("list_id", listId)
+      .order("checked")
+      .order("added_at");
+    if (data) setItems(data as unknown as ListItemRow[]);
+  }, [listId]);
+
+  // Realtime sync for multi-device updates (primary path is local refresh below)
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -53,40 +67,16 @@ export function ListView({
           table: "list_items",
           filter: `list_id=eq.${listId}`,
         },
-        async (payload) => {
-          if (payload.eventType === "DELETE") {
-            setItems((prev) =>
-              prev.filter((r) => r.id !== (payload.old as { id: string }).id),
-            );
-            return;
-          }
-          // INSERT or UPDATE → refetch the affected row with joined item+category
-          const id = (payload.new as { id: string }).id;
-          const { data: fresh } = await supabase
-            .from("list_items")
-            .select(
-              "id, qty, unit, checked, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))",
-            )
-            .eq("id", id)
-            .single();
-          if (!fresh) return;
-          setItems((prev) => {
-            const row = fresh as unknown as ListItemRow;
-            const idx = prev.findIndex((r) => r.id === row.id);
-            if (idx === -1) return [...prev, row];
-            const copy = [...prev];
-            copy[idx] = row;
-            return copy;
-          });
+        () => {
+          void refresh();
         },
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [listId]);
+  }, [listId, refresh]);
 
-  // Group by category, with unchecked first
   const { unchecked, checked } = useMemo(() => {
     const u: ListItemRow[] = [];
     const c: ListItemRow[] = [];
@@ -128,10 +118,33 @@ export function ListView({
             : `${t("itemsAdded", { n: total })}`,
         );
         if (inputRef.current) inputRef.current.value = "";
+        await refresh();
       } else {
         setError(`${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`);
       }
     });
+  }
+
+  async function handleToggle(rowId: string, nextChecked: boolean) {
+    // Optimistic local update
+    setItems((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, checked: nextChecked } : r)),
+    );
+    try {
+      await toggleListItem(rowId, nextChecked);
+    } catch {
+      // revert on failure
+      await refresh();
+    }
+  }
+
+  async function handleRemove(rowId: string) {
+    setItems((prev) => prev.filter((r) => r.id !== rowId));
+    try {
+      await removeListItem(rowId);
+    } catch {
+      await refresh();
+    }
   }
 
   return (
@@ -232,8 +245,8 @@ export function ListView({
                       key={row.id}
                       row={row}
                       lang={lang}
-                      onToggle={() => toggleListItem(row.id, true)}
-                      onRemove={() => removeListItem(row.id)}
+                      onToggle={() => handleToggle(row.id, true)}
+                      onRemove={() => handleRemove(row.id)}
                     />
                   ))}
                 </ul>
@@ -253,8 +266,8 @@ export function ListView({
                       row={row}
                       lang={lang}
                       checkedStyle
-                      onToggle={() => toggleListItem(row.id, false)}
-                      onRemove={() => removeListItem(row.id)}
+                      onToggle={() => handleToggle(row.id, false)}
+                      onRemove={() => handleRemove(row.id)}
                     />
                   ))}
                 </ul>
@@ -269,6 +282,8 @@ export function ListView({
                         setError(
                           `${t("errorGeneric")}${"message" in res && res.message ? ` (${res.message})` : ""}`,
                         );
+                      } else {
+                        await refresh();
                       }
                     })
                   }
