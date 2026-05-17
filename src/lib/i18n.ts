@@ -97,6 +97,10 @@ const dict = {
   itemsCount: { fi: "{n} tuotetta", sv: "{n} varor" },
   check: { fi: "Merkitse", sv: "Markera" },
   uncheck: { fi: "Poista merkki", sv: "Avmarkera" },
+  frequent: {
+    fi: "Usein ostettuja",
+    sv: "Köps ofta",
+  },
   // Households
   createHouseholdTitle: {
     fi: "Luo ensimmäinen taloutesi",

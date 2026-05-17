@@ -29,21 +29,23 @@ import {
   removeListItem,
   toggleListItem,
 } from "@/app/list/actions";
-import type { ListItemRow } from "@/app/list/page";
+import type { ListItemRow, QuickSuggestion } from "@/app/list/page";
 
 const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
 
-const EMPTY_SUGGESTIONS = ["maitoa", "ruisleipä", "kahvi", "kananmuna", "banaani"];
+const FALLBACK_SUGGESTIONS = ["maitoa", "ruisleipä", "kahvi", "kananmuna", "banaani"];
 
 export function ListView({
   householdName,
   listId,
   initialItems,
+  initialSuggestions,
 }: {
   householdName: string;
   listId: string;
   initialItems: ListItemRow[];
+  initialSuggestions: QuickSuggestion[];
 }) {
   const { lang, t } = useLang();
   const [items, setItems] = useState<ListItemRow[]>(initialItems);
@@ -148,6 +150,21 @@ export function ListView({
       }
     });
   }
+
+  const onListIds = useMemo(
+    () => new Set(items.map((r) => r.item.id)),
+    [items],
+  );
+  const suggestions = useMemo(() => {
+    const filtered = initialSuggestions.filter((s) => !onListIds.has(s.item_id));
+    if (filtered.length > 0) return filtered;
+    // Fallback for brand-new households: hardcoded starter suggestions.
+    return FALLBACK_SUGGESTIONS.map((s) => ({
+      item_id: `fallback:${s}`,
+      canonical_fi: s,
+      canonical_sv: s,
+    }));
+  }, [initialSuggestions, onListIds]);
 
   async function handleToggle(rowId: string, nextChecked: boolean) {
     buzz(nextChecked ? 20 : 10);
@@ -279,21 +296,35 @@ export function ListView({
           {error && <p className="text-sm text-rose-600 break-words">{error}</p>}
         </form>
 
+        {suggestions.length > 0 && (
+          <div className="mb-5 -mt-2">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {t("frequent")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((s) => {
+                const label =
+                  lang === "fi" ? s.canonical_fi : s.canonical_sv;
+                return (
+                  <button
+                    key={s.item_id}
+                    type="button"
+                    onClick={() => submitQuickAdd(s.canonical_fi)}
+                    disabled={pending}
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {capitalizeFirst(label)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-6 text-center text-sm dark:border-zinc-700 dark:bg-zinc-900/50">
             <p className="text-zinc-500">{t("listEmpty")}</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {EMPTY_SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => submitQuickAdd(s)}
-                  className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
-                >
-                  + {capitalizeFirst(s)}
-                </button>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="space-y-5">

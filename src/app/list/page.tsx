@@ -27,6 +27,12 @@ export type ListItemRow = {
   };
 };
 
+export type QuickSuggestion = {
+  item_id: string;
+  canonical_fi: string;
+  canonical_sv: string;
+};
+
 export default async function ListPage() {
   const supabase = await createClient();
   const {
@@ -40,6 +46,7 @@ export default async function ListPage() {
   let errorDetail: string | null = null;
   let listId: string | null = null;
   let rows: ListItemRow[] = [];
+  let quickSuggestions: QuickSuggestion[] = [];
 
   try {
     const list = await getOrCreateActiveList(household.id);
@@ -56,6 +63,32 @@ export default async function ListPage() {
 
     if (error) throw error;
     rows = (data ?? []) as unknown as ListItemRow[];
+
+    // Top frequent items for the quick-add chip strip.
+    const onListIds = new Set(rows.map((r) => r.item.id));
+    const { data: topRaw } = await supabase
+      .from("consumption_profiles")
+      .select(
+        "item_id, sample_count, item:items(canonical_fi, canonical_sv)",
+      )
+      .eq("household_id", household.id)
+      .order("sample_count", { ascending: false })
+      .limit(20);
+
+    type TopRow = {
+      item_id: string;
+      sample_count: number;
+      item: { canonical_fi: string; canonical_sv: string } | null;
+    };
+
+    quickSuggestions = ((topRaw ?? []) as unknown as TopRow[])
+      .filter((r) => r.item && !onListIds.has(r.item_id))
+      .slice(0, 8)
+      .map((r) => ({
+        item_id: r.item_id,
+        canonical_fi: r.item!.canonical_fi,
+        canonical_sv: r.item!.canonical_sv,
+      }));
   } catch (e) {
     errorDetail =
       e instanceof Error
@@ -92,6 +125,7 @@ export default async function ListPage() {
       householdName={household.name}
       listId={listId}
       initialItems={rows}
+      initialSuggestions={quickSuggestions}
     />
   );
 }
