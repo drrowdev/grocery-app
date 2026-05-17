@@ -14,6 +14,9 @@ export default async function Home() {
 
   if (!user) redirect("/login");
 
+  // Auto-accept any pending household invitations for this user's email.
+  await supabase.rpc("accept_pending_invitations");
+
   const { data: memberships } = await supabase
     .from("household_members")
     .select("households(id, name)")

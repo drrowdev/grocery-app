@@ -149,6 +149,30 @@ const dict = {
     fi: "ja valitse \"Lisää aloitusnäyttöön\".",
     sv: "och välj \"Lägg till på hemskärmen\".",
   },
+  // Household management
+  inviteTitle: { fi: "Kutsu jäsen", sv: "Bjud in medlem" },
+  invite: { fi: "Kutsu", sv: "Bjud in" },
+  inviteHint: {
+    fi: "Kutsuttu liittyy talouteen automaattisesti, kun hän kirjautuu samalla sähköpostiosoitteella.",
+    sv: "Den inbjudna ansluter automatiskt när hen loggar in med samma e-postadress.",
+  },
+  inviteSent: { fi: "Kutsu lähetetty: {email}", sv: "Inbjudan skickad: {email}" },
+  alreadyMember: { fi: "Käyttäjä on jo jäsen.", sv: "Användaren är redan medlem." },
+  members: { fi: "Jäsenet", sv: "Medlemmar" },
+  you: { fi: "sinä", sv: "du" },
+  roleOwner: { fi: "omistaja", sv: "ägare" },
+  roleMember: { fi: "jäsen", sv: "medlem" },
+  pendingInvitations: {
+    fi: "Odottavat kutsut",
+    sv: "Väntande inbjudningar",
+  },
+  remove: { fi: "Poista", sv: "Ta bort" },
+  revoke: { fi: "Peruuta", sv: "Återkalla" },
+  leaveHousehold: { fi: "Poistu taloudesta", sv: "Lämna hushållet" },
+  leaveConfirm: {
+    fi: "Haluatko varmasti poistua taloudesta?",
+    sv: "Vill du verkligen lämna hushållet?",
+  },
 } satisfies Dict;
 
 export type TKey = keyof typeof dict;

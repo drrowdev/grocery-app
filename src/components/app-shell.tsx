@@ -57,8 +57,8 @@ const tiles = [
     key: "household" as const,
     icon: Users,
     color: "text-rose-600",
-    href: null,
-    enabled: false,
+    href: "/household",
+    enabled: true,
   },
 ];
 
