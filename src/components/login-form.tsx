@@ -150,10 +150,10 @@ export function LoginForm() {
                     autoComplete="one-time-code"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    maxLength={6}
+                    maxLength={10}
                     placeholder="123456"
                     autoFocus
-                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-center text-2xl font-semibold tracking-[0.5em] text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-center text-2xl font-semibold tracking-[0.35em] text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
                   />
                 </label>
 
