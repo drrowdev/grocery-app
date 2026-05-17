@@ -15,7 +15,7 @@ A bilingual (Finnish / Swedish) smart shopping list PWA that:
 - **Next.js 16** (App Router) + Tailwind 4 + TypeScript
 - **Supabase** — Postgres + magic-link auth + Realtime + RLS
 - **Anthropic Claude Haiku 4.5** — categorization, NL parsing, seasonality
-- **Azure Static Web Apps** — free-tier hosting
+- **Vercel** — hosting (Hobby tier, auto-deploys from `main`)
 - **[FSOB](https://kotus.fi/sanakirjat/muita-sanakirjoja/finlandssvensk-ordbok)** — Finlandssvensk ordbok by Institutet för de inhemska språken (Kotus), CC BY 4.0. Bundled at build time to keep our Finland-Swedish output correct.
 
 ## Local development
