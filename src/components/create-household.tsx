@@ -29,7 +29,9 @@ export function CreateHousehold() {
           startTransition(async () => {
             setError(null);
             const res = await createHousehold(fd);
-            if (res && "error" in res) setError(t("errorGeneric"));
+            if (res && "error" in res) {
+              setError(`${t("errorGeneric")} (${res.message ?? res.error})`);
+            }
           })
         }
         className="mt-5 flex flex-col gap-3"
