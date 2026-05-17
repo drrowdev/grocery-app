@@ -137,6 +137,18 @@ const dict = {
   edit: { fi: "Muokkaa", sv: "Redigera" },
   save: { fi: "Tallenna", sv: "Spara" },
   cancel: { fi: "Peruuta", sv: "Avbryt" },
+  installTitle: {
+    fi: "Asenna Ostoslista iPhonelle",
+    sv: "Installera Inköpslistan på iPhone",
+  },
+  installLine1: {
+    fi: "Avaa jako-valikko",
+    sv: "Öppna delningsmenyn",
+  },
+  installLine2: {
+    fi: "ja valitse \"Lisää aloitusnäyttöön\".",
+    sv: "och välj \"Lägg till på hemskärmen\".",
+  },
 } satisfies Dict;
 
 export type TKey = keyof typeof dict;
