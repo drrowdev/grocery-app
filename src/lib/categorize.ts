@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { getAnthropic, CLAUDE_MODEL } from "@/lib/anthropic";
 import { createClient } from "@/lib/supabase/server";
+import { lookupDict } from "@/lib/grocery-dict";
 
 export const CATEGORY_KEYS = [
   "produce",
@@ -35,40 +36,26 @@ const ClaudeItemSchema = z.object({
 
 export type ClaudeItem = z.infer<typeof ClaudeItemSchema>;
 
-const SYSTEM_PROMPT = `You categorize grocery items for a Finnish/Swedish shopping list app.
+const SYSTEM_PROMPT = `You categorize grocery items for a Finnish/Swedish shopping list app used in Finland.
 
-The user input may be in Finnish, Swedish, English, or a mix. Recognize the source language by the words themselves (not just orthography) and translate to the **actual** Finnish and Swedish supermarket terms — do NOT invent Finnish words by phonetic transliteration of Swedish stems.
+The user input may be in Finnish, Swedish, English, or a mix. Recognize the source language by the words themselves and translate to the actual Finnish and **Finland-Swedish (finlandssvenska)** supermarket terms — NOT rikssvenska (Sweden-Swedish), and NEVER invent Finnish words by phonetic transliteration of Swedish stems.
 
-Common Swedish → Finnish you must know:
-- "köttfärs", "malet kött", "maletkött" → canonical_fi: "jauheliha", canonical_sv: "köttfärs"
-- "mjölk" → "maito" / "mjölk"
-- "ägg" → "kananmuna" / "ägg"
-- "bröd" → "leipä" / "bröd"
-- "rågbröd" → "ruisleipä" / "rågbröd"
-- "lax", "laxfilé" → "lohi" / "lax"
-- "smör" → "voi" / "smör"
-- "ost" → "juusto" / "ost"
-- "potatis" → "peruna" / "potatis"
-- "morötter" → "porkkana" / "morot"
-- "lök" → "sipuli" / "lök"
-- "kyckling" → "kana" / "kyckling"
-- "fläsk" → "sianliha" / "fläsk"
+Finland-Swedish vs Sweden-Swedish — always prefer the Finland-Swedish form:
+- "malet kött" (FI-SV) — NOT "köttfärs" (rikssvenska)
+- "saft" (FI-SV, means juice in Finland) — NOT "juice"
+- "keso" (FI-SV) — NOT "cottage cheese"
+- "semla" (FI-SV, means a bread roll, not a cardamom bun)
+
+If unsure whether the user typed Finland-Swedish or rikssvenska, output the Finland-Swedish form in canonical_sv.
 
 Return fields:
 - canonical_fi: standard Finnish singular nominative ("maito", "ruisleipä", "lohifile")
-- canonical_sv: standard Swedish singular ("mjölk", "rågbröd", "laxfilé")
+- canonical_sv: standard Finland-Swedish singular ("mjölk", "rågbröd", "laxfilé", "malet kött")
 - category_key: one of: produce, meat, fish, dairy, bakery, frozen, dry_goods, canned, spices, drinks, snacks, household, hygiene, other
 - unit: kpl (pieces), kg, g, l, dl, ml, pkt (package)
-- default_qty: sensible default in that unit (milk: 1 l, eggs: 6 kpl, mince: 0.5 kg)
+- default_qty: sensible default (milk: 1 l, eggs: 6 kpl, mince: 0.5 kg)
 
-Examples:
-"maitoa" -> {canonical_fi: "maito", canonical_sv: "mjölk", category_key: "dairy", unit: "l", default_qty: 1}
-"maletkött" -> {canonical_fi: "jauheliha", canonical_sv: "köttfärs", category_key: "meat", unit: "kg", default_qty: 0.5}
-"500g jauheliha" -> {canonical_fi: "jauheliha", canonical_sv: "köttfärs", category_key: "meat", unit: "kg", default_qty: 0.5}
-"ruisleipä" -> {canonical_fi: "ruisleipä", canonical_sv: "rågbröd", category_key: "bakery", unit: "kpl", default_qty: 1}
-"banana" -> {canonical_fi: "banaani", canonical_sv: "banan", category_key: "produce", unit: "kpl", default_qty: 4}
-
-Always return one tool call with valid arguments. Be confident: if the term is ambiguous, pick the most common Finnish supermarket interpretation. NEVER output a Finnish word that doesn't exist in real Finnish — if unsure, ask yourself whether the word would appear on a Finnish supermarket shelf.`;
+Always return one tool call with valid arguments. NEVER output a Finnish word that doesn't exist in real Finnish — if unsure whether the word would appear on a Finnish supermarket shelf, pick a real one that's close.`;
 
 const TOOL_DEFINITION = {
   name: "register_grocery_item",
@@ -111,6 +98,24 @@ export async function categorizeWithClaude(input: string): Promise<ClaudeItem> {
     throw new Error("Claude did not return a tool_use block");
   }
   return ClaudeItemSchema.parse(toolUse.input);
+}
+
+/**
+ * Categorize via local dictionary first (free, deterministic, Finland-Swedish
+ * correct), and fall back to Claude only for the long tail.
+ */
+async function categorize(input: string): Promise<ClaudeItem> {
+  const dictHit = lookupDict(input);
+  if (dictHit) {
+    return {
+      canonical_fi: dictHit.fi,
+      canonical_sv: dictHit.sv,
+      category_key: dictHit.category,
+      unit: dictHit.unit,
+      default_qty: dictHit.default_qty,
+    };
+  }
+  return categorizeWithClaude(input);
 }
 
 export type ResolvedItem = {
@@ -164,8 +169,8 @@ export async function resolveItem(
     return { ...(existing as Omit<ResolvedItem, "wasCreated">), wasCreated: false };
   }
 
-  // 2. Ask Claude
-  const claudeItem = await categorizeWithClaude(input);
+  // 2. Ask categorizer (dictionary first, Claude fallback)
+  const claudeItem = await categorize(input);
 
   // 3. Resolve category_id
   const { data: cat } = await supabase
