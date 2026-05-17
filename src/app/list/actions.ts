@@ -106,12 +106,13 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
 
 export async function updateListItem(
   listItemId: string,
-  patch: { qty?: number; unit?: string },
+  patch: { qty?: number; unit?: string; note?: string | null },
 ) {
   const supabase = await createClient();
   const update: Record<string, unknown> = {};
   if (typeof patch.qty === "number" && patch.qty > 0) update.qty = patch.qty;
   if (typeof patch.unit === "string") update.unit = patch.unit;
+  if (patch.note !== undefined) update.note = patch.note;
   if (Object.keys(update).length === 0) return;
 
   await supabase.from("list_items").update(update).eq("id", listItemId);
@@ -126,7 +127,7 @@ export async function updateListItem(
  */
 export async function editListItem(
   listItemId: string,
-  patch: { name?: string; qty?: number; unit?: string },
+  patch: { name?: string; qty?: number; unit?: string; note?: string | null },
 ): Promise<
   | { ok: true; canonical_fi: string; canonical_sv: string; swapped: boolean }
   | { ok: false; error: string; message?: string }
@@ -187,6 +188,7 @@ export async function editListItem(
   if (swapped) update.item_id = nextItemId;
   if (typeof patch.qty === "number" && patch.qty > 0) update.qty = patch.qty;
   if (typeof patch.unit === "string") update.unit = patch.unit;
+  if (patch.note !== undefined) update.note = patch.note;
 
   if (Object.keys(update).length > 0) {
     // If swapping to an item that's already on the list, we'd violate the

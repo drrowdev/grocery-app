@@ -6,18 +6,22 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  History,
   Loader2,
   Pencil,
   Plus,
   Sparkles,
+  StickyNote,
   Trash2,
 } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { SignOutButton } from "@/components/sign-out-button";
 import { VoiceButton } from "@/components/voice-button";
+import { SwipeableRow, buzz } from "@/components/swipeable-row";
 import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst, UNIT_OPTIONS } from "@/lib/utils";
+import { getItemEmoji } from "@/lib/item-emoji";
 import {
   completeList,
   editListItem,
@@ -28,7 +32,9 @@ import {
 import type { ListItemRow } from "@/app/list/page";
 
 const LIST_ITEM_SELECT =
-  "id, qty, unit, checked, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
+  "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
+
+const EMPTY_SUGGESTIONS = ["maitoa", "ruisleipä", "kahvi", "kananmuna", "banaani"];
 
 export function ListView({
   householdName,
@@ -144,6 +150,7 @@ export function ListView({
   }
 
   async function handleToggle(rowId: string, nextChecked: boolean) {
+    buzz(nextChecked ? 20 : 10);
     setItems((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, checked: nextChecked } : r)),
     );
@@ -155,6 +162,7 @@ export function ListView({
   }
 
   async function handleRemove(rowId: string) {
+    buzz(30);
     setItems((prev) => prev.filter((r) => r.id !== rowId));
     try {
       await removeListItem(rowId);
@@ -168,8 +176,9 @@ export function ListView({
     name: string,
     qty: number,
     unit: string,
+    note: string | null,
   ) {
-    const res = await editListItem(rowId, { name, qty, unit });
+    const res = await editListItem(rowId, { name, qty, unit, note });
     if (!res.ok) {
       setError(`${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`);
     }
@@ -203,6 +212,21 @@ export function ListView({
       </header>
 
       <main className="flex-1 px-5 py-6 mx-auto w-full max-w-2xl">
+        <div className="flex items-center justify-between mb-4 -mt-2">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            {items.length === 0
+              ? t("tagline")
+              : `${unchecked.length} ${t("toBuy")} · ${checked.length} ${t("inCartShort")}`}
+          </p>
+          <Link
+            href="/history"
+            className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-emerald-700 dark:hover:text-emerald-400"
+          >
+            <History className="h-3.5 w-3.5" />
+            {t("history")}
+          </Link>
+        </div>
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -256,8 +280,20 @@ export function ListView({
         </form>
 
         {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50">
-            {t("listEmpty")}
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-6 text-center text-sm dark:border-zinc-700 dark:bg-zinc-900/50">
+            <p className="text-zinc-500">{t("listEmpty")}</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {EMPTY_SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => submitQuickAdd(s)}
+                  className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                >
+                  + {capitalizeFirst(s)}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="space-y-5">
@@ -276,8 +312,8 @@ export function ListView({
                       lang={lang}
                       onToggle={() => handleToggle(row.id, true)}
                       onRemove={() => handleRemove(row.id)}
-                      onEdit={(name, qty, unit) =>
-                        handleEdit(row.id, name, qty, unit)
+                      onEdit={(name, qty, unit, note) =>
+                        handleEdit(row.id, name, qty, unit, note)
                       }
                     />
                   ))}
@@ -300,8 +336,8 @@ export function ListView({
                       checkedStyle
                       onToggle={() => handleToggle(row.id, false)}
                       onRemove={() => handleRemove(row.id)}
-                      onEdit={(name, qty, unit) =>
-                        handleEdit(row.id, name, qty, unit)
+                      onEdit={(name, qty, unit, note) =>
+                        handleEdit(row.id, name, qty, unit, note)
                       }
                     />
                   ))}
@@ -361,17 +397,19 @@ function ListRow({
     name: string,
     qty: number,
     unit: string,
+    note: string | null,
   ) => Promise<void> | void;
   checkedStyle?: boolean;
 }) {
   const { t } = useLang();
   const [draft, setDraft] = useState<
-    { name: string; qty: string; unit: string } | null
+    { name: string; qty: string; unit: string; note: string } | null
   >(null);
   const [busy, setBusy] = useState(false);
 
   const name =
     lang === "fi" ? row.item.canonical_fi : row.item.canonical_sv;
+  const emoji = getItemEmoji(row.item.canonical_fi, row.item.category?.key);
 
   if (draft) {
     return (
@@ -383,6 +421,14 @@ function ListRow({
           className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
           autoFocus
           placeholder={t("addItemPlaceholder")}
+        />
+        <input
+          type="text"
+          value={draft.note}
+          onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+          maxLength={120}
+          className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          placeholder={t("notePlaceholder")}
         />
         <div className="flex items-center gap-2">
           <input
@@ -420,7 +466,13 @@ function ListRow({
                 const n = parseFloat(draft.qty.replace(",", "."));
                 if (!(Number.isFinite(n) && n > 0)) return;
                 setBusy(true);
-                await onEdit(draft.name.trim() || name, n, draft.unit);
+                const noteToSave = draft.note.trim() || null;
+                await onEdit(
+                  draft.name.trim() || name,
+                  n,
+                  draft.unit,
+                  noteToSave,
+                );
                 setBusy(false);
                 setDraft(null);
               }}
@@ -440,57 +492,93 @@ function ListRow({
   }
 
   return (
-    <li className="flex items-center gap-2 px-3 py-2.5">
-      <button
-        type="button"
-        onClick={() => void onToggle()}
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${
-          checkedStyle
-            ? "border-emerald-600 bg-emerald-600 text-white"
-            : "border-zinc-300 bg-white hover:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-950"
-        }`}
-        aria-label={checkedStyle ? "Uncheck" : "Check"}
-      >
-        {checkedStyle && <Check className="h-4 w-4" />}
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          setDraft({ name, qty: String(row.qty), unit: row.unit })
-        }
-        className={`min-w-0 flex-1 text-left text-sm font-medium truncate transition ${
-          checkedStyle
-            ? "text-zinc-400 line-through dark:text-zinc-500"
-            : "text-zinc-900 hover:text-emerald-700 dark:text-zinc-50 dark:hover:text-emerald-400"
-        }`}
-        aria-label={t("edit")}
-      >
-        {capitalizeFirst(name)}
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          setDraft({ name, qty: String(row.qty), unit: row.unit })
-        }
-        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums transition ${
-          checkedStyle
-            ? "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
-            : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
-        }`}
-        aria-label={t("edit")}
-      >
-        {formatQty(row.qty)} {row.unit}
-        <Pencil className="h-3 w-3 opacity-60" />
-      </button>
-      <button
-        type="button"
-        onClick={() => void onRemove()}
-        className="rounded-md p-1.5 text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
-        aria-label="Delete"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </li>
+    <SwipeableRow
+      leftAction={{
+        side: "left",
+        bg: "bg-rose-600",
+        icon: <Trash2 className="h-5 w-5" />,
+        label: t("remove"),
+        onTrigger: () => void onRemove(),
+      }}
+      rightAction={{
+        side: "right",
+        bg: checkedStyle ? "bg-zinc-500" : "bg-emerald-600",
+        icon: <Check className="h-5 w-5" />,
+        label: checkedStyle ? t("uncheck") : t("check"),
+        onTrigger: () => void onToggle(),
+      }}
+    >
+      <li className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-zinc-900">
+        <button
+          type="button"
+          onClick={() => void onToggle()}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${
+            checkedStyle
+              ? "border-emerald-600 bg-emerald-600 text-white"
+              : "border-zinc-300 bg-white hover:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-950"
+          }`}
+          aria-label={checkedStyle ? "Uncheck" : "Check"}
+        >
+          {checkedStyle && <Check className="h-4 w-4" />}
+        </button>
+        <span className="text-xl shrink-0 select-none" aria-hidden="true">
+          {emoji}
+        </span>
+        <button
+          type="button"
+          onClick={() =>
+            setDraft({
+              name,
+              qty: String(row.qty),
+              unit: row.unit,
+              note: row.note ?? "",
+            })
+          }
+          className="min-w-0 flex-1 text-left"
+          aria-label={t("edit")}
+        >
+          <p
+            className={`text-sm font-medium truncate ${
+              checkedStyle
+                ? "text-zinc-400 line-through dark:text-zinc-500"
+                : "text-zinc-900 dark:text-zinc-50"
+            }`}
+          >
+            {capitalizeFirst(name)}
+          </p>
+          {row.note && (
+            <p
+              className={`mt-0.5 flex items-center gap-1 text-xs truncate ${
+                checkedStyle ? "text-zinc-400" : "text-zinc-500 dark:text-zinc-500"
+              }`}
+            >
+              <StickyNote className="h-3 w-3 shrink-0" />
+              {row.note}
+            </p>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setDraft({
+              name,
+              qty: String(row.qty),
+              unit: row.unit,
+              note: row.note ?? "",
+            })
+          }
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums transition ${
+            checkedStyle
+              ? "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
+              : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
+          }`}
+          aria-label={t("edit")}
+        >
+          {formatQty(row.qty)} {row.unit}
+          <Pencil className="h-3 w-3 opacity-60" />
+        </button>
+      </li>
+    </SwipeableRow>
   );
 }
 

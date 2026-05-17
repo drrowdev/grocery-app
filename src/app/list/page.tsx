@@ -12,6 +12,7 @@ export type ListItemRow = {
   qty: number;
   unit: string;
   checked: boolean;
+  note: string | null;
   item: {
     id: string;
     canonical_fi: string;
@@ -47,7 +48,7 @@ export default async function ListPage() {
     const { data, error } = await supabase
       .from("list_items")
       .select(
-        "id, qty, unit, checked, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))",
+        "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))",
       )
       .eq("list_id", list.id)
       .order("checked")

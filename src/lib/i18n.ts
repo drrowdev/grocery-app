@@ -82,6 +82,21 @@ const dict = {
     fi: "Vaihda sähköpostiosoite",
     sv: "Ändra e-postadressen",
   },
+  notePlaceholder: {
+    fi: "Huomautus (esim. merkki, koko)",
+    sv: "Anteckning (t.ex. märke, storlek)",
+  },
+  toBuy: { fi: "ostettavaa", sv: "att köpa" },
+  inCartShort: { fi: "korissa", sv: "i vagnen" },
+  history: { fi: "Historia", sv: "Historik" },
+  historyEmpty: {
+    fi: "Ei vielä valmiita ostoslistoja.",
+    sv: "Inga slutförda inköpslistor ännu.",
+  },
+  reorderFromList: { fi: "Lisää uudelle listalle", sv: "Lägg till på ny lista" },
+  itemsCount: { fi: "{n} tuotetta", sv: "{n} varor" },
+  check: { fi: "Merkitse", sv: "Markera" },
+  uncheck: { fi: "Poista merkki", sv: "Avmarkera" },
   // Households
   createHouseholdTitle: {
     fi: "Luo ensimmäinen taloutesi",
