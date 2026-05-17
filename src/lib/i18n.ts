@@ -56,8 +56,8 @@ const dict = {
   },
   householdNameLabel: { fi: "Talouden nimi", sv: "Hushållets namn" },
   householdNamePlaceholder: {
-    fi: "esim. Koti tai Lagusin perhe",
-    sv: "t.ex. Hemma eller Familjen Lagus",
+    fi: "esim. Koti tai Kämppä",
+    sv: "t.ex. Hemma eller Stugan",
   },
   create: { fi: "Luo", sv: "Skapa" },
   // Errors
