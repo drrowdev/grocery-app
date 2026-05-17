@@ -4,6 +4,7 @@ import { getCurrentHousehold } from "@/lib/household";
 import { getOrCreateActiveList } from "@/lib/list";
 import { ListView } from "@/components/list-view";
 import Link from "next/link";
+import type { RunningLowItem } from "@/components/running-low-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,7 @@ export default async function ListPage() {
   let listId: string | null = null;
   let rows: ListItemRow[] = [];
   let quickSuggestions: QuickSuggestion[] = [];
+  let runningLow: RunningLowItem[] = [];
 
   try {
     const list = await getOrCreateActiveList(household.id);
@@ -89,6 +91,38 @@ export default async function ListPage() {
         canonical_fi: r.item!.canonical_fi,
         canonical_sv: r.item!.canonical_sv,
       }));
+
+    // Running low predictions for items not yet on the active list.
+    const horizon = new Date(Date.now() + 3 * 86400000).toISOString();
+    const { data: lowRaw } = await supabase
+      .from("consumption_profiles")
+      .select(
+        "item_id, avg_cycle_days, avg_qty, last_purchased_at, item:items(canonical_fi, canonical_sv, unit)",
+      )
+      .eq("household_id", household.id)
+      .eq("is_recurring", true)
+      .lte("next_predicted_date", horizon)
+      .order("next_predicted_date", { ascending: true })
+      .limit(6);
+
+    type LowRow = {
+      item_id: string;
+      avg_cycle_days: number | null;
+      avg_qty: number | null;
+      last_purchased_at: string | null;
+      item: { canonical_fi: string; canonical_sv: string; unit: string } | null;
+    };
+    runningLow = ((lowRaw ?? []) as unknown as LowRow[])
+      .filter((r) => r.item && !onListIds.has(r.item_id))
+      .map((r) => ({
+        item_id: r.item_id,
+        canonical_fi: r.item!.canonical_fi,
+        canonical_sv: r.item!.canonical_sv,
+        avg_cycle_days: r.avg_cycle_days,
+        avg_qty: r.avg_qty,
+        unit: r.item!.unit,
+        last_purchased_at: r.last_purchased_at,
+      }));
   } catch (e) {
     errorDetail =
       e instanceof Error
@@ -126,6 +160,7 @@ export default async function ListPage() {
       listId={listId}
       initialItems={rows}
       initialSuggestions={quickSuggestions}
+      runningLow={runningLow}
     />
   );
 }

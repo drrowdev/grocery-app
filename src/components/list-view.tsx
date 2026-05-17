@@ -1,28 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Check,
   CheckCircle2,
   History,
   Loader2,
+  LogOut,
   Pencil,
   Plus,
+  ShoppingCart,
   Sparkles,
   StickyNote,
+  TrendingDown,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
-import { SignOutButton } from "@/components/sign-out-button";
+import { ActionMenu } from "@/components/action-menu";
 import { VoiceButton } from "@/components/voice-button";
 import { SwipeableRow, buzz } from "@/components/swipeable-row";
 import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst, UNIT_OPTIONS } from "@/lib/utils";
 import { getItemEmoji } from "@/lib/item-emoji";
+import { signOut } from "@/app/auth/actions";
 import {
+  addSuggested,
   completeList,
   editListItem,
   quickAdd,
@@ -30,6 +35,7 @@ import {
   toggleListItem,
 } from "@/app/list/actions";
 import type { ListItemRow, QuickSuggestion } from "@/app/list/page";
+import type { RunningLowItem } from "@/components/running-low-panel";
 
 const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
@@ -41,18 +47,22 @@ export function ListView({
   listId,
   initialItems,
   initialSuggestions,
+  runningLow,
 }: {
   householdName: string;
   listId: string;
   initialItems: ListItemRow[];
   initialSuggestions: QuickSuggestion[];
+  runningLow: RunningLowItem[];
 }) {
+  const router = useRouter();
   const { lang, t } = useLang();
   const [items, setItems] = useState<ListItemRow[]>(initialItems);
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showRunningLow, setShowRunningLow] = useState(true);
 
   const refresh = useCallback(async () => {
     const supabase = createClient();
@@ -204,46 +214,48 @@ export function ListView({
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh bg-gradient-to-b from-emerald-50 to-white dark:from-zinc-950 dark:to-black">
-      <header className="flex items-center justify-between px-5 py-4 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/70 dark:bg-zinc-950/70 backdrop-blur">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href="/"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/80 dark:bg-zinc-950/80 backdrop-blur">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+            <ShoppingCart className="h-4.5 w-4.5" />
+          </div>
           <div className="min-w-0">
-            <h1 className="text-base font-semibold leading-none text-zinc-900 dark:text-zinc-50 truncate">
-              {t("myList")}
-            </h1>
-            <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
+            <h1 className="text-base font-semibold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
               {householdName}
+            </h1>
+            <p className="text-[11px] text-zinc-500 leading-none mt-0.5 truncate">
+              {items.length === 0
+                ? t("listEmptyShort")
+                : `${unchecked.length} ${t("toBuy")} · ${checked.length} ${t("inCartShort")}`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <LangToggle />
-          <SignOutButton />
+          <ActionMenu
+            items={[
+              {
+                label: t("household"),
+                icon: <Users className="h-4 w-4" />,
+                onClick: () => router.push("/household"),
+              },
+              {
+                label: t("history"),
+                icon: <History className="h-4 w-4" />,
+                onClick: () => router.push("/history"),
+              },
+              {
+                label: t("signOut"),
+                icon: <LogOut className="h-4 w-4" />,
+                onClick: () => startTransition(() => signOut()),
+                danger: true,
+              },
+            ]}
+          />
         </div>
       </header>
 
-      <main className="flex-1 px-5 py-6 mx-auto w-full max-w-2xl">
-        <div className="flex items-center justify-between mb-4 -mt-2">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {items.length === 0
-              ? t("tagline")
-              : `${unchecked.length} ${t("toBuy")} · ${checked.length} ${t("inCartShort")}`}
-          </p>
-          <Link
-            href="/history"
-            className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-emerald-700 dark:hover:text-emerald-400"
-          >
-            <History className="h-3.5 w-3.5" />
-            {t("history")}
-          </Link>
-        </div>
-
+      <main className="flex-1 px-4 py-5 mx-auto w-full max-w-2xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -251,11 +263,8 @@ export function ListView({
             const text = String(fd.get("text") ?? "");
             if (text.trim()) submitQuickAdd(text);
           }}
-          className="flex flex-col gap-2 mb-5"
+          className="flex flex-col gap-2 mb-4"
         >
-          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {t("quickAddLabel")}
-          </label>
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -263,7 +272,7 @@ export function ListView({
               required
               autoComplete="off"
               placeholder={t("quickAddPlaceholder")}
-              className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-base text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+              className="flex-1 rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-base text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
             <VoiceButton
               onResult={(text) => {
@@ -274,46 +283,91 @@ export function ListView({
             <button
               type="submit"
               disabled={pending}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
+              aria-label={t("add")}
             >
               {pending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               )}
-              {t("add")}
             </button>
           </div>
-          <p className="text-xs text-zinc-500 flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-violet-500" />
-            {t("quickAddHint")}
-          </p>
           {toast && (
             <p className="text-sm text-emerald-700 dark:text-emerald-400">
               {toast}
             </p>
           )}
           {error && <p className="text-sm text-rose-600 break-words">{error}</p>}
+          {!toast && !error && (
+            <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-violet-500" />
+              {t("quickAddHint")}
+            </p>
+          )}
         </form>
 
         {suggestions.length > 0 && (
-          <div className="mb-5 -mt-2">
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="mb-4">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
               {t("frequent")}
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {suggestions.map((s) => {
                 const label =
                   lang === "fi" ? s.canonical_fi : s.canonical_sv;
+                const emoji = getItemEmoji(s.canonical_fi, null);
                 return (
                   <button
                     key={s.item_id}
                     type="button"
                     onClick={() => submitQuickAdd(s.canonical_fi)}
                     disabled={pending}
-                    className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 active:scale-95 disabled:opacity-60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
                   >
-                    <Plus className="h-3 w-3" />
+                    <span aria-hidden="true">{emoji}</span>
+                    {capitalizeFirst(label)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {showRunningLow && runningLow.length > 0 && (
+          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50/70 p-3 dark:border-orange-900/40 dark:bg-orange-950/20">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-orange-900 dark:text-orange-200">
+                <TrendingDown className="h-3.5 w-3.5" />
+                {t("runningLowSoon")}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowRunningLow(false)}
+                className="text-xs text-orange-800/60 hover:text-orange-900 dark:text-orange-300/60 dark:hover:text-orange-300"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {runningLow.map((it) => {
+                const label =
+                  lang === "fi" ? it.canonical_fi : it.canonical_sv;
+                const emoji = getItemEmoji(it.canonical_fi, null);
+                return (
+                  <button
+                    key={it.item_id}
+                    type="button"
+                    onClick={() =>
+                      startTransition(async () => {
+                        await addSuggested(it.item_id);
+                        await refresh();
+                      })
+                    }
+                    disabled={pending}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-xs font-medium text-orange-900 transition hover:bg-orange-100 active:scale-95 disabled:opacity-60 dark:border-orange-900/50 dark:bg-zinc-900 dark:text-orange-200"
+                  >
+                    <span aria-hidden="true">{emoji}</span>
                     {capitalizeFirst(label)}
                   </button>
                 );
@@ -323,8 +377,9 @@ export function ListView({
         )}
 
         {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-6 text-center text-sm dark:border-zinc-700 dark:bg-zinc-900/50">
-            <p className="text-zinc-500">{t("listEmpty")}</p>
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
+            <ShoppingCart className="mx-auto h-8 w-8 text-zinc-300 dark:text-zinc-700" />
+            <p className="mt-2 text-sm text-zinc-500">{t("listEmpty")}</p>
           </div>
         ) : (
           <div className="space-y-5">

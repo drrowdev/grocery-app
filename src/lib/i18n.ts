@@ -161,6 +161,10 @@ const dict = {
     fi: "Lista on tyhjä. Lisää tuotteita yllä olevasta kentästä.",
     sv: "Listan är tom. Lägg till varor i fältet ovan.",
   },
+  listEmptyShort: {
+    fi: "Tyhjä lista",
+    sv: "Tom lista",
+  },
   itemsAdded: {
     fi: "Lisätty {n} tuotetta",
     sv: "{n} varor tillagda",
