@@ -130,6 +130,10 @@ const dict = {
     fi: "{n} päivää sitten",
     sv: "{n} dagar sedan",
   },
+  conflictKept: {
+    fi: "Listalla jo: {name} {qty} {unit}. Ei muutettu.",
+    sv: "Redan på listan: {name} {qty} {unit}. Inte ändrad.",
+  },
   edit: { fi: "Muokkaa", sv: "Redigera" },
   save: { fi: "Tallenna", sv: "Spara" },
   cancel: { fi: "Peruuta", sv: "Avbryt" },

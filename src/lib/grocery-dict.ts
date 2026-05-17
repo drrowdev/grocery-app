@@ -42,13 +42,13 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["kananmuna", "kananmunia", "muna", "munaa", "munat", "ägg", "egg", "eggs"] },
 
   // Meat
-  { fi: "jauheliha", sv: "malet kött", category: "meat", unit: "kg", default_qty: 0.5,
+  { fi: "jauheliha", sv: "malet kött", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["jauheliha", "jauhelihaa", "malet kött", "maletkött", "köttfärs", "ground beef", "ground meat", "mince", "mincemeat", "naudan jauheliha"] },
-  { fi: "kana", sv: "kyckling", category: "meat", unit: "kg", default_qty: 0.5,
+  { fi: "kana", sv: "kyckling", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["kana", "kanaa", "kyckling", "chicken", "broileri", "broilerin fileesuikale", "kanafile", "kananfilee"] },
-  { fi: "sianliha", sv: "fläsk", category: "meat", unit: "kg", default_qty: 0.5,
+  { fi: "sianliha", sv: "fläsk", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["sianliha", "sianlihaa", "fläsk", "pork", "porsas", "porsasta"] },
-  { fi: "naudanliha", sv: "nötkött", category: "meat", unit: "kg", default_qty: 0.5,
+  { fi: "naudanliha", sv: "nötkött", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["naudanliha", "naudanlihaa", "nötkött", "beef"] },
   { fi: "kinkku", sv: "skinka", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["kinkku", "kinkkua", "skinka", "ham"] },
@@ -58,15 +58,15 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["pekoni", "pekonia", "bacon"] },
 
   // Fish
-  { fi: "lohi", sv: "lax", category: "fish", unit: "kg", default_qty: 0.5,
+  { fi: "lohi", sv: "lax", category: "fish", unit: "pkt", default_qty: 1,
     aliases: ["lohi", "lohta", "lax", "salmon"] },
-  { fi: "lohifile", sv: "laxfilé", category: "fish", unit: "kg", default_qty: 0.5,
+  { fi: "lohifile", sv: "laxfilé", category: "fish", unit: "pkt", default_qty: 1,
     aliases: ["lohifile", "lohifilee", "laxfilé", "laxfile", "salmon fillet"] },
   { fi: "tonnikala", sv: "tonfisk", category: "fish", unit: "pkt", default_qty: 1,
     aliases: ["tonnikala", "tonnikalaa", "tonfisk", "tuna"] },
-  { fi: "silakka", sv: "strömming", category: "fish", unit: "kg", default_qty: 0.5,
+  { fi: "silakka", sv: "strömming", category: "fish", unit: "pkt", default_qty: 1,
     aliases: ["silakka", "silakkaa", "strömming"] },
-  { fi: "kirjolohi", sv: "regnbåge", category: "fish", unit: "kg", default_qty: 0.5,
+  { fi: "kirjolohi", sv: "regnbåge", category: "fish", unit: "pkt", default_qty: 1,
     aliases: ["kirjolohi", "kirjolohta", "regnbåge", "regnbågslax", "rainbow trout"] },
 
   // Bakery

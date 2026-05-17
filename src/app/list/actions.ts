@@ -8,7 +8,12 @@ import { resolveItem } from "@/lib/categorize";
 import { parseBulkInput } from "@/lib/parse-bulk";
 
 export type QuickAddResult =
-  | { ok: true; added: string[]; merged: string[] }
+  | {
+      ok: true;
+      added: string[];
+      merged: string[];
+      conflicts: { name: string; existingQty: number; existingUnit: string }[];
+    }
   | { ok: false; error: "empty" | "no_household" | "generic"; message?: string };
 
 export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
@@ -30,6 +35,11 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
 
     const added: string[] = [];
     const merged: string[] = [];
+    const conflicts: {
+      name: string;
+      existingQty: number;
+      existingUnit: string;
+    }[] = [];
 
     for (const p of parsed) {
       const resolved = await resolveItem(household.id, p.name);
@@ -45,12 +55,24 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
 
       if (existing) {
         const sameUnit = existing.unit === unit;
-        const newQty = existing.checked || !sameUnit ? qty : existing.qty + qty;
+        if (!sameUnit && !existing.checked) {
+          // Unit mismatch on an active row: do NOT overwrite. Keep what's
+          // there and report the conflict so the UI can prompt the user.
+          conflicts.push({
+            name: resolved.canonical_fi,
+            existingQty: Number(existing.qty),
+            existingUnit: existing.unit,
+          });
+          continue;
+        }
+        const newQty = existing.checked
+          ? qty
+          : Number(existing.qty) + qty;
         await supabase
           .from("list_items")
           .update({
             qty: newQty,
-            unit,
+            unit: existing.checked ? unit : existing.unit,
             checked: false,
             checked_at: null,
             added_by: user?.id,
@@ -71,7 +93,7 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
     }
 
     revalidatePath("/list");
-    return { ok: true, added, merged };
+    return { ok: true, added, merged, conflicts };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("quickAdd error:", e);

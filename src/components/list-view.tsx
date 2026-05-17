@@ -115,11 +115,26 @@ export function ListView({
       const res = await quickAdd(fd);
       if (res.ok) {
         const total = res.added.length + res.merged.length;
-        setToast(
-          total === 1
-            ? `${t("itemAdded")}: ${res.added[0] ?? res.merged[0]}`
-            : `${t("itemsAdded", { n: total })}`,
-        );
+        const parts: string[] = [];
+        if (total > 0) {
+          parts.push(
+            total === 1
+              ? `${t("itemAdded")}: ${res.added[0] ?? res.merged[0]}`
+              : t("itemsAdded", { n: total }),
+          );
+        }
+        if (res.conflicts.length > 0) {
+          for (const c of res.conflicts) {
+            parts.push(
+              t("conflictKept", {
+                name: c.name,
+                qty: c.existingQty,
+                unit: c.existingUnit,
+              }),
+            );
+          }
+        }
+        setToast(parts.join(" · "));
         if (inputRef.current) inputRef.current.value = "";
         await refresh();
       } else {
