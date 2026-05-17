@@ -39,24 +39,37 @@ export type ClaudeItem = z.infer<typeof ClaudeItemSchema>;
 
 const SYSTEM_PROMPT = `You categorize grocery items for a Finnish/Swedish shopping list app used in Finland.
 
-The user input may be in Finnish, Swedish, English, or a mix. Recognize the source language by the words themselves and translate to the actual Finnish and **Finland-Swedish (finlandssvenska)** supermarket terms — NOT rikssvenska (Sweden-Swedish), and NEVER invent Finnish words by phonetic transliteration of Swedish stems.
+The user input may be in Finnish, Swedish, English, or a mix. Recognize the source language and translate to the actual Finnish and **Finland-Swedish (finlandssvenska)** supermarket terms — NOT rikssvenska, and NEVER invent Finnish words by phonetic transliteration of Swedish stems.
 
-Finland-Swedish vs Sweden-Swedish — always prefer the Finland-Swedish form:
+PRESERVE the user's input shape closely. Do NOT strip these qualifiers when they appear:
+- Fat content / composition: "10%", "17%", "7%", "1.5%"
+- Lean/full-fat markers: "rasvaton", "kevyt", "täys-", "fettfri", "lätt", "mager"
+- Origin/quality: "luomu", "eko", "ekologisk", "organic", "tuore", "pakaste", "fryst"
+- Brand-like tokens
+- Color/type modifiers: "valkoinen", "punainen", "vit", "röd"
+
+Output canonical_fi as close to the user's Finnish input as possible (just lowercase + trim). Output canonical_sv as the Finland-Swedish translation of the FULL phrase including any preserved modifiers.
+
+Finland-Swedish preferred over rikssvenska in canonical_sv:
 - "malet kött" (FI-SV) — NOT "köttfärs" (rikssvenska)
-- "saft" (FI-SV, means juice in Finland) — NOT "juice"
-- "keso" (FI-SV) — NOT "cottage cheese"
-- "semla" (FI-SV, means a bread roll, not a cardamom bun)
-
-If unsure whether the user typed Finland-Swedish or rikssvenska, output the Finland-Swedish form in canonical_sv.
+- "saft" (FI-SV, juice in Finland)
+- "keso" (FI-SV)
+- "semla" (FI-SV: bread roll)
 
 Return fields:
-- canonical_fi: standard Finnish singular nominative ("maito", "ruisleipä", "lohifile")
-- canonical_sv: standard Finland-Swedish singular ("mjölk", "rågbröd", "laxfilé", "malet kött")
-- category_key: one of: produce, meat, fish, dairy, bakery, frozen, dry_goods, canned, spices, drinks, snacks, household, hygiene, other
-- unit: kpl (pieces), kg, g, l, dl, ml, pkt (package)
-- default_qty: sensible default (milk: 1 l, eggs: 6 kpl, mince: 0.5 kg)
+- canonical_fi: user input in standard Finnish (preserve modifiers; only normalize whitespace + case)
+- canonical_sv: Finland-Swedish translation of the FULL phrase (including modifiers)
+- category_key: produce, meat, fish, dairy, bakery, frozen, dry_goods, canned, spices, drinks, snacks, household, hygiene, or other
+- unit: kpl, kg, g, l, dl, ml, pkt
+- default_qty: sensible default (milk: 1 l, eggs: 6 kpl, mince: 1 pkt)
 
-Always return one tool call with valid arguments. NEVER output a Finnish word that doesn't exist in real Finnish — if unsure whether the word would appear on a Finnish supermarket shelf, pick a real one that's close.`;
+Examples:
+"10% jauheliha" -> {canonical_fi: "10% jauheliha", canonical_sv: "10% malet kött", category_key: "meat", unit: "pkt", default_qty: 1}
+"luomu kananmuna" -> {canonical_fi: "luomu kananmuna", canonical_sv: "ekologiskt ägg", category_key: "dairy", unit: "kpl", default_qty: 6}
+"rasvaton maito" -> {canonical_fi: "rasvaton maito", canonical_sv: "fettfri mjölk", category_key: "dairy", unit: "l", default_qty: 1}
+"banana" -> {canonical_fi: "banaani", canonical_sv: "banan", category_key: "produce", unit: "kpl", default_qty: 4}
+
+Return one tool call. NEVER output a Finnish word that doesn't exist in real Finnish.`;
 
 const TOOL_DEFINITION = {
   name: "register_grocery_item",

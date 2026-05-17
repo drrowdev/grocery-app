@@ -27,15 +27,17 @@ CRITICAL: Multi-word product names must stay TOGETHER. Examples of multi-word it
 - "crème fraîche" is one item
 - "valkoinen kala" (white fish) is one item
 - "rasvaton maito" (skim milk) is one item
+- "10% jauheliha" is one item — the percentage is a fat-content descriptor, NOT a quantity
 
 Rules:
 - Each item: {name: string, qty: number|null, unit: enum|null}
 - Quantity is null when not specified. NEVER guess a quantity.
 - Unit is one of: kpl, kg, g, l, dl, ml, pkt. Use null when not specified.
+- A "%" token is ALWAYS a descriptor (fat content, alcohol content, etc.) — NEVER a quantity or unit. Keep "X%" attached to the name.
 - Numeric+unit prefixes parse: "500g" => qty: 0.5, unit: "kg". "750ml" => qty: 0.75, unit: "l". "2pkt" => qty: 2, unit: "pkt".
 - A bare number with no unit attaches as qty only: "3 malet kött" => qty: 3, unit: null (NOT 3 kg, NOT 3 kpl).
-- Strip articles, leading numbers, and quantity tokens from the name. Keep the item term itself raw — do NOT canonicalize ("maitoa" stays "maitoa", "malet kött" stays "malet kött").
-- Splits: commas, "ja"/"och"/"and", newlines. Never split on spaces.
+- Strip articles, leading numbers, and quantity tokens from the name. PRESERVE descriptive modifiers like fat % ("10%"), luomu/eko, rasvaton/kevyt/täys-, brand names, ecological markers. Keep the item term itself raw — do NOT canonicalize ("maitoa" stays "maitoa", "malet kött" stays "malet kött").
+- Splits: commas, "ja"/"och"/"and", newlines. Never split on spaces. NEVER split on a percent token.
 
 Examples (study these carefully):
 "2 maitoa, ruisleipä, 500g jauheliha" -> [
@@ -45,6 +47,10 @@ Examples (study these carefully):
 ]
 "3 malet kött" -> [{name:"malet kött", qty:3, unit:null}]
 "2pkt maletkött" -> [{name:"maletkött", qty:2, unit:"pkt"}]
+"1 10% jauheliha" -> [{name:"10% jauheliha", qty:1, unit:null}]
+"500g 17% jauheliha" -> [{name:"17% jauheliha", qty:0.5, unit:"kg"}]
+"luomu maito" -> [{name:"luomu maito", qty:null, unit:null}]
+"rasvaton maito" -> [{name:"rasvaton maito", qty:null, unit:null}]
 "1l mehua ja 6 munaa" -> [
   {name:"mehua", qty:1, unit:"l"},
   {name:"munaa", qty:6, unit:null}
@@ -79,9 +85,9 @@ export async function parseBulkInput(text: string): Promise<ParsedBulkItem[]> {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
-  // Fast path: single short token, no digits, no commas → skip Claude, treat as one item
+  // Fast path: short token, no commas, no digits, no % token
   if (
-    !/[,\n]/.test(trimmed) &&
+    !/[,\n%]/.test(trimmed) &&
     !/\d/.test(trimmed) &&
     trimmed.split(/\s+/).length <= 3
   ) {
