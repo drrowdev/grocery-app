@@ -56,13 +56,11 @@ export function LoginForm() {
                     if ("ok" in res) {
                       setStep({ kind: "code", email });
                     } else {
-                      setError(
-                        t(
-                          res.error === "invalid_email"
-                            ? "errorInvalidEmail"
-                            : "errorGeneric",
-                        ),
-                      );
+                      const msg =
+                        res.error === "invalid_email"
+                          ? t("errorInvalidEmail")
+                          : `${t("errorGeneric")}${"message" in res && res.message ? ` (${res.message})` : ""}`;
+                      setError(msg);
                     }
                   })
                 }

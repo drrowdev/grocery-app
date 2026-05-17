@@ -31,7 +31,7 @@ export async function signInWithMagicLink(formData: FormData) {
 
   if (error) {
     console.error("magic-link error:", error.message);
-    return { error: "generic" as const };
+    return { error: "generic" as const, message: error.message };
   }
   return { ok: true as const };
 }
