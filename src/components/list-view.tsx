@@ -47,6 +47,7 @@ export function ListView({
   lists,
   currentListId,
   currentListName,
+  currentListType,
   initialItems,
   initialSuggestions,
 }: {
@@ -54,6 +55,7 @@ export function ListView({
   lists: ListSummary[];
   currentListId: string;
   currentListName: string;
+  currentListType: "grocery" | "general";
   initialItems: ListItemRow[];
   initialSuggestions: QuickSuggestion[];
 }) {
@@ -353,8 +355,8 @@ export function ListView({
           </div>
         )}
 
-        {/* Category filter tabs */}
-        {totalCount > 0 && (
+        {/* Category filter tabs (grocery lists only) */}
+        {currentListType === "grocery" && totalCount > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 mb-4 -mx-5 px-5 scrollbar-none">
             <FilterChip
               active={filter === "all"}
@@ -382,6 +384,21 @@ export function ListView({
             <ShoppingCart className="mx-auto h-8 w-8 text-zinc-300 dark:text-zinc-700" />
             <p className="mt-2 text-sm text-zinc-500">{t("listEmpty")}</p>
           </div>
+        ) : currentListType === "general" ? (
+          <ul className="space-y-1.5">
+            {items.map((row) => (
+              <ListItemRowComp
+                key={row.id}
+                row={row}
+                lang={lang}
+                showEmoji={false}
+                onToggle={() => handleToggle(row.id, !row.checked)}
+                onRemove={() => handleRemove(row.id)}
+                onDelta={(d) => handleQtyDelta(row, d)}
+                onRenameSave={(name) => handleRenameSave(row, name)}
+              />
+            ))}
+          </ul>
         ) : (
           <div className="space-y-5">
             {filteredGroups.map(([key, group]) => (
@@ -398,6 +415,7 @@ export function ListView({
                       key={row.id}
                       row={row}
                       lang={lang}
+                      showEmoji
                       onToggle={() => handleToggle(row.id, !row.checked)}
                       onRemove={() => handleRemove(row.id)}
                       onDelta={(d) => handleQtyDelta(row, d)}
@@ -481,6 +499,7 @@ function FilterChip({
 function ListItemRowComp({
   row,
   lang,
+  showEmoji = true,
   onToggle,
   onRemove,
   onDelta,
@@ -488,6 +507,7 @@ function ListItemRowComp({
 }: {
   row: ListItemRow;
   lang: "fi" | "sv";
+  showEmoji?: boolean;
   onToggle: () => void;
   onRemove: () => void;
   onDelta: (delta: number) => void;
@@ -516,9 +536,11 @@ function ListItemRowComp({
       </button>
 
       {/* Emoji */}
-      <span className="text-lg shrink-0 select-none" aria-hidden="true">
-        {emoji}
-      </span>
+      {showEmoji && (
+        <span className="text-lg shrink-0 select-none" aria-hidden="true">
+          {emoji}
+        </span>
+      )}
 
       {/* Name (editable inline) */}
       <div className="min-w-0 flex-1">

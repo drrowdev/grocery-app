@@ -45,6 +45,7 @@ export type QuickSuggestion = {
 export type ListSummary = {
   id: string;
   name: string;
+  type: "grocery" | "general";
   itemCount: number;
 };
 
@@ -68,7 +69,7 @@ export default async function ListPage({
   const [allListsRes, catalogRes] = await Promise.all([
     supabase
       .from("shopping_lists")
-      .select("id, name, status, created_at, list_items(id)")
+      .select("id, name, type, status, created_at, list_items(id)")
       .eq("household_id", household.id)
       .eq("status", "active")
       .order("created_at", { ascending: true }),
@@ -88,6 +89,7 @@ export default async function ListPage({
   type ListRow = {
     id: string;
     name: string;
+    type: "grocery" | "general";
     status: string;
     created_at: string;
     list_items: { id: string }[] | null;
@@ -95,13 +97,14 @@ export default async function ListPage({
   let allLists = ((allListsRaw ?? []) as unknown as ListRow[]).map((l) => ({
     id: l.id,
     name: l.name,
+    type: l.type ?? "grocery",
     itemCount: l.list_items?.length ?? 0,
   })) as ListSummary[];
 
   // If no lists yet, lazily create one
   if (allLists.length === 0) {
     const created = await getOrCreateActiveList(household.id);
-    allLists = [{ id: created.id, name: created.name, itemCount: 0 }];
+    allLists = [{ id: created.id, name: created.name, type: "grocery", itemCount: 0 }];
   }
 
   const selected =
@@ -144,7 +147,17 @@ export default async function ListPage({
     };
 
     quickSuggestions = ((catalogRaw ?? []) as unknown as CatalogRow[])
-      .filter((r) => !onListIds.has(r.id))
+      .filter((r) => {
+        if (onListIds.has(r.id)) return false;
+        // For grocery list: only items with a category (i.e. real grocery
+        // items) — keep generic/uncategorized ones out so the chips stay
+        // grocery-relevant.
+        if (selected.type === "grocery") return r.category !== null;
+        // For general list: only items WITHOUT a category (uncategorized
+        // additions) — keep grocery brand names like 'Maito' out of a
+        // pharmacy chip strip.
+        return r.category === null;
+      })
       .map((r) => {
         const p = Array.isArray(r.profile) ? r.profile[0] : r.profile;
         return { row: r, count: p?.sample_count ?? 0 };
@@ -200,6 +213,7 @@ export default async function ListPage({
       lists={allLists}
       currentListId={selected.id}
       currentListName={selected.name}
+      currentListType={selected.type}
       initialItems={rows}
       initialSuggestions={quickSuggestions}
     />

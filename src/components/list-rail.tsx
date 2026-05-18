@@ -19,6 +19,7 @@ export function ListRail({
   const { t } = useLang();
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState("");
+  const [draftType, setDraftType] = useState<"grocery" | "general">("grocery");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [pending, startTransition] = useTransition();
@@ -183,7 +184,7 @@ export function ListRail({
 
       <div className="mt-1 border-t border-zinc-100 pt-1 dark:border-zinc-800">
         {creating ? (
-          <div className="flex items-center gap-1 px-1 py-1">
+          <div className="flex flex-col gap-1 px-1 py-1">
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -193,43 +194,83 @@ export function ListRail({
                 if (e.key === "Enter") {
                   if (!draft.trim()) return;
                   startTransition(async () => {
-                    const res = await createList(draft);
+                    const res = await createList(draft, draftType);
                     if (res.ok) {
                       router.push(`/list?id=${res.id}`);
                       setCreating(false);
                       setDraft("");
+                      setDraftType("grocery");
                     }
                   });
                 } else if (e.key === "Escape") {
                   setCreating(false);
                   setDraft("");
+                  setDraftType("grocery");
                 }
               }}
-              className="flex-1 min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+              className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
             />
-            <button
-              type="button"
-              disabled={pending || !draft.trim()}
-              onClick={() => {
-                if (!draft.trim()) return;
-                startTransition(async () => {
-                  const res = await createList(draft);
-                  if (res.ok) {
-                    router.push(`/list?id=${res.id}`);
-                    setCreating(false);
-                    setDraft("");
-                  }
-                });
-              }}
-              className="rounded-md bg-emerald-600 p-1 text-white disabled:opacity-60"
-              aria-label={t("create")}
-            >
-              {pending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Check className="h-3 w-3" />
-              )}
-            </button>
+            <div className="flex items-center gap-1 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setDraftType("grocery")}
+                className={`flex-1 rounded px-2 py-1 transition ${
+                  draftType === "grocery"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                🛒 {t("listTypeGrocery")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraftType("general")}
+                className={`flex-1 rounded px-2 py-1 transition ${
+                  draftType === "general"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                📋 {t("listTypeGeneral")}
+              </button>
+            </div>
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreating(false);
+                  setDraft("");
+                  setDraftType("grocery");
+                }}
+                className="rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={pending || !draft.trim()}
+                onClick={() => {
+                  if (!draft.trim()) return;
+                  startTransition(async () => {
+                    const res = await createList(draft, draftType);
+                    if (res.ok) {
+                      router.push(`/list?id=${res.id}`);
+                      setCreating(false);
+                      setDraft("");
+                      setDraftType("grocery");
+                    }
+                  });
+                }}
+                className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-xs font-medium text-white disabled:opacity-60"
+              >
+                {pending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                {t("create")}
+              </button>
+            </div>
           </div>
         ) : (
           <button

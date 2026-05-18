@@ -24,11 +24,26 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
   if (!household) return { ok: false, error: "no_household" };
 
   try {
-    const parsed = await parseBulkInput(raw);
+    const supabase = await createClient();
+
+    // What kind of list are we adding to? (Defaults to grocery if no list ID
+    // is bound to this action — quickAdd is invoked from /list which uses
+    // getOrCreateActiveList; for a non-default list the type lookup happens
+    // below via the active list query.)
+    const list = await getOrCreateActiveList(household.id);
+    const isGeneralList = await getListType(supabase, list.id) === "general";
+
+    const parsed = isGeneralList
+      ? // For general lists, take the input as-is, one item per line/comma
+        raw
+          .split(/[,\n]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((name) => ({ name, qty: null as number | null, unit: null as string | null }))
+      : await parseBulkInput(raw);
+
     if (parsed.length === 0) return { ok: false, error: "empty" };
 
-    const list = await getOrCreateActiveList(household.id);
-    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -42,7 +57,9 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
     }[] = [];
 
     for (const p of parsed) {
-      const resolved = await resolveItem(household.id, p.name);
+      const resolved = isGeneralList
+        ? await resolveItemPlain(household.id, p.name)
+        : await resolveItem(household.id, p.name);
       const qty = p.qty ?? resolved.default_qty;
       const unit = p.unit ?? resolved.unit;
 
@@ -97,6 +114,70 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
     console.error("quickAdd error:", e);
     return { ok: false, error: "generic", message };
   }
+}
+
+async function getListType(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  listId: string,
+): Promise<"grocery" | "general"> {
+  const { data } = await supabase
+    .from("shopping_lists")
+    .select("type")
+    .eq("id", listId)
+    .maybeSingle();
+  return (data?.type as "grocery" | "general") ?? "grocery";
+}
+
+/**
+ * Create or fetch an item without running any categorization. Used for
+ * 'general' lists where categories are meaningless.
+ */
+async function resolveItemPlain(householdId: string, rawInput: string) {
+  const input = rawInput.trim();
+  if (!input) throw new Error("Empty input");
+
+  const supabase = await createClient();
+
+  // Try exact canonical match first
+  const { data: existing } = await supabase
+    .from("items")
+    .select("id, canonical_fi, canonical_sv, unit, default_qty")
+    .eq("household_id", householdId)
+    .eq("canonical_fi", input)
+    .maybeSingle();
+
+  if (existing) {
+    return {
+      id: existing.id as string,
+      canonical_fi: existing.canonical_fi as string,
+      canonical_sv: existing.canonical_sv as string,
+      unit: (existing.unit as string) ?? "kpl",
+      default_qty: Number(existing.default_qty ?? 1),
+    };
+  }
+
+  // Insert a new uncategorized item
+  const { data: inserted, error } = await supabase
+    .from("items")
+    .insert({
+      household_id: householdId,
+      canonical_fi: input,
+      canonical_sv: input,
+      category_id: null,
+      unit: "kpl",
+      default_qty: 1,
+    })
+    .select("id, canonical_fi, canonical_sv, unit, default_qty")
+    .single();
+
+  if (error) throw error;
+  return {
+    id: inserted.id as string,
+    canonical_fi: inserted.canonical_fi as string,
+    canonical_sv: inserted.canonical_sv as string,
+    unit: (inserted.unit as string) ?? "kpl",
+    default_qty: Number(inserted.default_qty ?? 1),
+  };
 }
 
 export async function updateListItem(
@@ -346,6 +427,7 @@ export async function addSuggested(itemId: string, listId?: string) {
  */
 export async function createList(
   name: string,
+  type: "grocery" | "general" = "grocery",
 ): Promise<{ ok: true; id: string } | { ok: false; message: string }> {
   const household = await getCurrentHousehold();
   if (!household) return { ok: false, message: "no_household" };
@@ -362,6 +444,7 @@ export async function createList(
       household_id: household.id,
       name: cleaned,
       status: "active",
+      type,
       created_by: user?.id,
     })
     .select("id")

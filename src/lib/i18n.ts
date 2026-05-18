@@ -107,6 +107,8 @@ const dict = {
     fi: "Listan nimi…",
     sv: "Listans namn…",
   },
+  listTypeGrocery: { fi: "Ruokakauppa", sv: "Mat" },
+  listTypeGeneral: { fi: "Muu lista", sv: "Annan lista" },
   rename: { fi: "Nimeä uudelleen", sv: "Byt namn" },
   deleteListConfirm: {
     fi: "Poistetaanko lista \"{name}\" ja sen tuotteet?",
