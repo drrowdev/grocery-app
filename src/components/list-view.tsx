@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { AppHeader } from "@/components/app-header";
@@ -76,6 +77,7 @@ export function ListView({
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const listId = currentListId;
 
   const onListIds = useMemo(
@@ -97,28 +99,50 @@ export function ListView({
     if (data) setItems(data as unknown as ListItemRow[]);
   }, [listId]);
 
-  // Realtime sync for multi-device updates
+  // Realtime sync across all lists in the household. We subscribe without
+  // a filter — Supabase RLS already restricts the events we receive to
+  // rows the current user is allowed to see (i.e. their households). When
+  // an event arrives:
+  //  - if it's for the list currently rendered, refetch its items
+  //  - otherwise, refresh the route so the rail counts + AI status update
+  //
+  // shopping_lists events (rename, create, delete a list) trigger a route
+  // refresh so the rail re-renders.
+  const visibleListIds = useMemo(
+    () => new Set(lists.map((l) => l.id)),
+    [lists],
+  );
+
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
-      .channel(`list:${listId}`)
+      .channel(`household-realtime`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "list_items",
-          filter: `list_id=eq.${listId}`,
+        { event: "*", schema: "public", table: "list_items" },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { list_id?: string };
+          const evtListId = row?.list_id;
+          if (!evtListId) return;
+          if (evtListId === listId) {
+            void refresh();
+          } else if (visibleListIds.has(evtListId)) {
+            router.refresh();
+          }
         },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "shopping_lists" },
         () => {
-          void refresh();
+          router.refresh();
         },
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [listId, refresh]);
+  }, [listId, refresh, router, visibleListIds]);
 
   // Group by category (checked items stay in their category)
   const grouped = useMemo(() => {
