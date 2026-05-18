@@ -115,6 +115,19 @@ export function ListView({
 
   useEffect(() => {
     const supabase = createClient();
+    let mounted = true;
+
+    // Defensive: explicitly push the current access token onto the
+    // realtime client. createBrowserClient usually handles this but in
+    // some PWA / first-mount situations the auth context hasn't been
+    // attached to the realtime socket by the time .subscribe() runs,
+    // and RLS-protected channels then silently drop every event.
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      const token = data.session?.access_token;
+      if (token) supabase.realtime.setAuth(token);
+    });
+
     const channel = supabase
       .channel(`household-realtime`)
       .on(
@@ -123,6 +136,9 @@ export function ListView({
         (payload) => {
           const row = (payload.new ?? payload.old) as { list_id?: string };
           const evtListId = row?.list_id;
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[rt] list_items", payload.eventType, evtListId);
+          }
           if (!evtListId) return;
           if (evtListId === listId) {
             void refresh();
@@ -134,12 +150,21 @@ export function ListView({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "shopping_lists" },
-        () => {
+        (payload) => {
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[rt] shopping_lists", payload.eventType);
+          }
           router.refresh();
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[rt] channel status:", status, err);
+        }
+      });
+
     return () => {
+      mounted = false;
       void supabase.removeChannel(channel);
     };
   }, [listId, refresh, router, visibleListIds]);
