@@ -75,46 +75,56 @@ export default async function ListPage() {
     if (error) throw error;
     rows = (data ?? []) as unknown as ListItemRow[];
 
-    // Top frequent items for the quick-add chip strip.
+    // Quick-add chip strip: pulls from the household's items catalog
+    // (everything you've ever added). Sorted by purchase count when
+    // consumption_profile exists, otherwise by recency. Items already on
+    // the active list are filtered out.
     const onListIds = new Set(rows.map((r) => r.item.id));
-    const { data: topRaw } = await supabase
-      .from("consumption_profiles")
+    const { data: catalogRaw } = await supabase
+      .from("items")
       .select(
-        "item_id, sample_count, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key, name_fi, name_sv, icon, sort_order))",
+        "id, canonical_fi, canonical_sv, unit, default_qty, created_at, category:categories(key, name_fi, name_sv, icon, sort_order), profile:consumption_profiles(sample_count)",
       )
       .eq("household_id", household.id)
-      .order("sample_count", { ascending: false })
-      .limit(20);
+      .order("created_at", { ascending: false })
+      .limit(60);
 
-    type TopRow = {
-      item_id: string;
-      sample_count: number;
-      item: {
-        canonical_fi: string;
-        canonical_sv: string;
-        unit: string;
-        default_qty: number;
-        category: {
-          key: string;
-          name_fi: string;
-          name_sv: string;
-          icon: string | null;
-          sort_order: number;
-        } | null;
+    type CatalogRow = {
+      id: string;
+      canonical_fi: string;
+      canonical_sv: string;
+      unit: string;
+      default_qty: number;
+      created_at: string;
+      category: {
+        key: string;
+        name_fi: string;
+        name_sv: string;
+        icon: string | null;
+        sort_order: number;
       } | null;
+      profile: { sample_count: number } | { sample_count: number }[] | null;
     };
 
-    quickSuggestions = ((topRaw ?? []) as unknown as TopRow[])
-      .filter((r) => r.item && !onListIds.has(r.item_id))
-      .slice(0, 8)
-      .map((r) => ({
-        item_id: r.item_id,
-        canonical_fi: r.item!.canonical_fi,
-        canonical_sv: r.item!.canonical_sv,
-        unit: r.item!.unit,
-        default_qty: Number(r.item!.default_qty),
-        category: r.item!.category,
-      }));
+    const sorted = ((catalogRaw ?? []) as unknown as CatalogRow[])
+      .filter((r) => !onListIds.has(r.id))
+      .map((r) => {
+        const p = Array.isArray(r.profile) ? r.profile[0] : r.profile;
+        return { row: r, count: p?.sample_count ?? 0 };
+      })
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.row.created_at < b.row.created_at ? 1 : -1;
+      });
+
+    quickSuggestions = sorted.slice(0, 8).map(({ row: r }) => ({
+      item_id: r.id,
+      canonical_fi: r.canonical_fi,
+      canonical_sv: r.canonical_sv,
+      unit: r.unit,
+      default_qty: Number(r.default_qty),
+      category: r.category,
+    }));
 
     // Running low predictions for items not yet on the active list.
     const horizon = new Date(Date.now() + 3 * 86400000).toISOString();
