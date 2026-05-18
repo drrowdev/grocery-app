@@ -32,8 +32,14 @@ function getSRConstructor(): (new () => SR) | null {
 export function VoiceButton({ onResult, className = "" }: Props) {
   const { lang } = useLang();
   const [listening, setListening] = useState(false);
-  const [supported] = useState(() => getSRConstructor() !== null);
+  // Defer the supported check to after mount so initial render matches
+  // the server (both return null), avoiding hydration mismatch.
+  const [supported, setSupported] = useState(false);
   const recogRef = useRef<SR | null>(null);
+
+  useEffect(() => {
+    setSupported(getSRConstructor() !== null);
+  }, []);
 
   useEffect(() => {
     const Ctor = getSRConstructor();
