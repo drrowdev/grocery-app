@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Check, ChevronDown, Loader2, Plus, X } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { createList, deleteList, renameList } from "@/app/list/actions";
@@ -30,6 +31,15 @@ export function ListPicker({
   const [renameDraft, setRenameDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Prefetch every sibling list so picker taps switch instantly, same as
+  // the desktop ListRail. This is the cheap fix for the multi-second
+  // list-switch lag on mobile.
+  useEffect(() => {
+    for (const list of lists) {
+      if (list.id !== currentId) router.prefetch(`/list?id=${list.id}`);
+    }
+  }, [lists, currentId, router]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,30 +137,32 @@ export function ListPicker({
                     </div>
                   ) : (
                     <div className="flex items-center group">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isCurrent) {
-                            router.push(`/list?id=${list.id}`);
-                          }
-                          setOpen(false);
-                        }}
-                        className={`flex-1 flex items-center gap-2 px-3 py-2.5 text-sm text-left transition ${
-                          isCurrent
-                            ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
-                            : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                        }`}
-                      >
-                        {isCurrent ? (
+                      {isCurrent ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpen(false)}
+                          className="flex-1 flex items-center gap-2 px-3 py-2.5 text-sm text-left bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
+                        >
                           <Check className="h-4 w-4 text-emerald-600" />
-                        ) : (
+                          <span className="flex-1 truncate">{list.name}</span>
+                          <span className="text-xs text-zinc-400">
+                            {list.itemCount}
+                          </span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/list?id=${list.id}`}
+                          prefetch
+                          onClick={() => setOpen(false)}
+                          className="flex-1 flex items-center gap-2 px-3 py-2.5 text-sm text-left text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        >
                           <span className="w-4" />
-                        )}
-                        <span className="flex-1 truncate">{list.name}</span>
-                        <span className="text-xs text-zinc-400">
-                          {list.itemCount}
-                        </span>
-                      </button>
+                          <span className="flex-1 truncate">{list.name}</span>
+                          <span className="text-xs text-zinc-400">
+                            {list.itemCount}
+                          </span>
+                        </Link>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => {
