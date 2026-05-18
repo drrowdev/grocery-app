@@ -176,16 +176,39 @@ export function ListView({
   function applyOptimisticMerge(text: string): boolean {
     const trimmed = text.trim();
     if (!trimmed) return false;
-    const match = trimmed.match(/^\s*(\d+(?:[.,]\d+)?)\s+(.+)$/);
-    const qtyFromInput = match ? Number(match[1].replace(",", ".")) : null;
-    const namePart = (match ? match[2] : trimmed).trim().toLowerCase();
-    if (!namePart) return false;
-    const candidate = items.find(
-      (r) =>
-        r.item.canonical_fi.toLowerCase() === namePart ||
-        r.item.canonical_sv.toLowerCase() === namePart,
-    );
+
+    // Pull off a leading qty number ("2 kvarg" → qty=2, rest="kvarg")
+    const qtyMatch = trimmed.match(/^\s*(\d+(?:[.,]\d+)?)\s+(.+)$/);
+    const qtyFromInput = qtyMatch
+      ? Number(qtyMatch[1].replace(",", "."))
+      : null;
+    const rest = qtyMatch ? qtyMatch[2] : trimmed;
+
+    // Normalise: lowercase + strip percentage modifiers + collapse spaces.
+    // "10% maletkött" → "maletkött", "Malet kött 10%" → "malet kött".
+    function normalise(s: string): string {
+      return s
+        .toLowerCase()
+        .replace(/\d+[,.]?\d*\s*%/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    const needle = normalise(rest);
+    if (!needle) return false;
+
+    const candidate = items.find((r) => {
+      const fi = normalise(r.item.canonical_fi);
+      const sv = normalise(r.item.canonical_sv);
+      if (fi === needle || sv === needle) return true;
+      // Substring match in either direction so "10% malet kött" matches
+      // an existing "Malet kött" item and vice versa.
+      if (fi && (fi.includes(needle) || needle.includes(fi))) return true;
+      if (sv && (sv.includes(needle) || needle.includes(sv))) return true;
+      return false;
+    });
     if (!candidate) return false;
+
     setItems((prev) =>
       prev.map((r) =>
         r.id === candidate.id
@@ -200,6 +223,34 @@ export function ListView({
       ),
     );
     return true;
+  }
+
+  // Optimistic tentative row for genuinely new items. We don't know the
+  // canonical name / category yet, so we render a placeholder using the
+  // user's raw input. The server's resolveItem will replace it via
+  // refresh() once it finishes (~2s later).
+  function applyOptimisticNew(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const qtyMatch = trimmed.match(/^\s*(\d+(?:[.,]\d+)?)\s+(.+)$/);
+    const qty = qtyMatch ? Number(qtyMatch[1].replace(",", ".")) : 1;
+    const name = (qtyMatch ? qtyMatch[2] : trimmed).trim();
+    const tempItemId = `pending-${nextTempId()}`;
+    const tempId = nextTempId();
+    const placeholder: ListItemRow = {
+      id: tempId,
+      qty,
+      unit: "kpl",
+      checked: false,
+      note: null,
+      item: {
+        id: tempItemId,
+        canonical_fi: name,
+        canonical_sv: name,
+        category: null,
+      },
+    };
+    setItems((prev) => [...prev, placeholder]);
   }
 
   async function handleToggle(rowId: string, nextChecked: boolean) {
@@ -345,7 +396,8 @@ export function ListView({
             if (!text) return;
             // Apply optimistic merge OUTSIDE the transition so the bump
             // renders immediately (transitions defer state updates).
-            applyOptimisticMerge(text);
+            const merged = applyOptimisticMerge(text);
+            if (!merged) applyOptimisticNew(text);
             if (inputRef.current) inputRef.current.value = "";
             startTransition(() => submitQuickAdd(text));
           }}
@@ -362,7 +414,8 @@ export function ListView({
           <VoiceButton
             onResult={(text) => {
               if (inputRef.current) inputRef.current.value = text;
-              applyOptimisticMerge(text);
+              const merged = applyOptimisticMerge(text);
+              if (!merged) applyOptimisticNew(text);
               if (inputRef.current) inputRef.current.value = "";
               startTransition(() => submitQuickAdd(text));
             }}
