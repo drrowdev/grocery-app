@@ -20,6 +20,7 @@ import { getItemEmoji } from "@/lib/item-emoji";
 import { lookupDict } from "@/lib/grocery-dict";
 import { CATEGORY_META } from "@/lib/category-meta";
 import { unitLabel } from "@/lib/i18n";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import {
   editListItem,
   quickAdd,
@@ -476,6 +477,12 @@ export function ListView({
   }
 
   return (
+    <PullToRefresh
+      onRefresh={async () => {
+        await refresh();
+        router.refresh();
+      }}
+    >
     <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
       <div className="px-4 pt-5 pb-2 mx-auto w-full max-w-5xl">
         <AppHeader
@@ -697,6 +704,7 @@ export function ListView({
         </main>
       </div>
     </div>
+    </PullToRefresh>
   );
 }
 
