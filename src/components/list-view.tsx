@@ -155,6 +155,40 @@ export function ListView({
   }, [grouped, filter]);
 
   async function submitQuickAdd(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    // Optimistic merge: if the typed input plainly matches an item that's
+    // already on this list, bump its qty immediately so the UI feels
+    // instant. The server still runs (parsing, categorisation, recurrence)
+    // and reconciles via refresh() — but the user doesn't have to wait.
+    const match = trimmed.match(/^\s*(\d+(?:[.,]\d+)?)\s+(.+)$/);
+    const qtyFromInput = match ? Number(match[1].replace(",", ".")) : null;
+    const namePart = (match ? match[2] : trimmed).trim().toLowerCase();
+    if (namePart) {
+      const candidate = items.find(
+        (r) =>
+          r.item.canonical_fi.toLowerCase() === namePart ||
+          r.item.canonical_sv.toLowerCase() === namePart,
+      );
+      if (candidate) {
+        setItems((prev) =>
+          prev.map((r) =>
+            r.id === candidate.id
+              ? {
+                  ...r,
+                  qty: candidate.checked
+                    ? (qtyFromInput ?? candidate.qty)
+                    : Number(candidate.qty) + (qtyFromInput ?? 1),
+                  checked: false,
+                }
+              : r,
+          ),
+        );
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    }
+
     const fd = new FormData();
     fd.set("text", text);
     fd.set("listId", currentListId);
