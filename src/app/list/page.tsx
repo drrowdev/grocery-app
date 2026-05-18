@@ -132,6 +132,19 @@ export default async function ListPage({
 
     const onListIds = new Set(rows.map((r) => r.item.id));
 
+    // Item ids that have ever appeared on a list of this same type in this
+    // household. This is what makes the chip strip context-aware: a grocery
+    // list never suggests medicine, a pharmacy list never suggests milk —
+    // even if the item table has a category set for it.
+    const { data: sameTypeRows } = await supabase
+      .from("list_items")
+      .select("item_id, shopping_lists!inner(type, household_id)")
+      .eq("shopping_lists.household_id", household.id)
+      .eq("shopping_lists.type", selected.type);
+    const sameTypeIds = new Set(
+      (sameTypeRows ?? []).map((r) => r.item_id as string),
+    );
+
     type CatalogRow = {
       id: string;
       canonical_fi: string;
@@ -152,14 +165,9 @@ export default async function ListPage({
     quickSuggestions = ((catalogRaw ?? []) as unknown as CatalogRow[])
       .filter((r) => {
         if (onListIds.has(r.id)) return false;
-        // For grocery list: only items with a category (i.e. real grocery
-        // items) — keep generic/uncategorized ones out so the chips stay
-        // grocery-relevant.
-        if (selected.type === "grocery") return r.category !== null;
-        // For general list: only items WITHOUT a category (uncategorized
-        // additions) — keep grocery brand names like 'Maito' out of a
-        // pharmacy chip strip.
-        return r.category === null;
+        // Only suggest items the user has previously added to a list of
+        // the same type as the one they're currently viewing.
+        return sameTypeIds.has(r.id);
       })
       .map((r) => {
         const p = Array.isArray(r.profile) ? r.profile[0] : r.profile;
