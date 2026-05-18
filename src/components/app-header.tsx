@@ -63,7 +63,7 @@ export function AppHeader({
     };
   }, [isOwner]);
 
-  const menuItems = [
+  const menuItems: import("@/components/action-menu").MenuItem[] = [
     {
       label: t("myList"),
       icon: <span className="text-base">🛒</span>,
@@ -93,7 +93,7 @@ export function AppHeader({
     icon: <LogOut className="h-4 w-4" />,
     onClick: () => void signOut(),
     danger: true,
-  } as (typeof menuItems)[number] & { danger?: boolean });
+  });
 
   return (
     <div className="flex items-start justify-between gap-3 mb-4">
