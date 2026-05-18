@@ -64,13 +64,26 @@ export default async function ListPage({
   const household = await getCurrentHousehold();
   if (!household) redirect("/");
 
-  // Fetch all active lists for this household + their item counts
-  const { data: allListsRaw } = await supabase
-    .from("shopping_lists")
-    .select("id, name, status, created_at, list_items(id)")
-    .eq("household_id", household.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: true });
+  // Run independent queries in parallel
+  const [allListsRes, catalogRes] = await Promise.all([
+    supabase
+      .from("shopping_lists")
+      .select("id, name, status, created_at, list_items(id)")
+      .eq("household_id", household.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("items")
+      .select(
+        "id, canonical_fi, canonical_sv, unit, default_qty, created_at, category:categories(key, name_fi, name_sv, icon, sort_order), profile:consumption_profiles(sample_count)",
+      )
+      .eq("household_id", household.id)
+      .order("created_at", { ascending: false })
+      .limit(60),
+  ]);
+
+  const { data: allListsRaw } = allListsRes;
+  const { data: catalogRaw } = catalogRes;
 
   type ListRow = {
     id: string;
@@ -91,7 +104,6 @@ export default async function ListPage({
     allLists = [{ id: created.id, name: created.name, itemCount: 0 }];
   }
 
-  // Pick which list to show: query param if provided + valid, else first
   const selected =
     (requestedId && allLists.find((l) => l.id === requestedId)) ||
     allLists[0];
@@ -113,14 +125,6 @@ export default async function ListPage({
     rows = (data ?? []) as unknown as ListItemRow[];
 
     const onListIds = new Set(rows.map((r) => r.item.id));
-    const { data: catalogRaw } = await supabase
-      .from("items")
-      .select(
-        "id, canonical_fi, canonical_sv, unit, default_qty, created_at, category:categories(key, name_fi, name_sv, icon, sort_order), profile:consumption_profiles(sample_count)",
-      )
-      .eq("household_id", household.id)
-      .order("created_at", { ascending: false })
-      .limit(60);
 
     type CatalogRow = {
       id: string;
