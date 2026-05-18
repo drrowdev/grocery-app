@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentHousehold } from "@/lib/household";
 import { getOrCreateActiveList } from "@/lib/list";
 import { resolveItem } from "@/lib/categorize";
+import { lookupDict } from "@/lib/grocery-dict";
+import { lookupCatalog } from "@/lib/product-catalog";
 import { parseBulkInput } from "@/lib/parse-bulk";
 
 export type QuickAddResult =
@@ -169,16 +171,74 @@ async function resolveItemPlain(householdId: string, rawInput: string) {
     };
   }
 
-  // Insert a new uncategorized item
+  // Even for general lists, check the offline dict + OFF catalog so a known
+  // grocery item like "rahka" still lands as Rahka/Kvarg/dairy (and merges
+  // with any later add from a grocery list). Only truly unknown words like
+  // medicine brand names fall through to the verbatim, uncategorised insert.
+  let canonicalFi = input;
+  let canonicalSv = input;
+  let categoryKey: string | null = null;
+  let unit = "kpl";
+  let defaultQty = 1;
+
+  const dictHit = lookupDict(input);
+  if (dictHit) {
+    canonicalFi = dictHit.fi;
+    canonicalSv = dictHit.sv;
+    categoryKey = dictHit.category;
+    unit = dictHit.unit;
+    defaultQty = dictHit.default_qty;
+  } else {
+    const catalogHit = lookupCatalog(input);
+    if (catalogHit) {
+      canonicalFi = catalogHit.canonical_fi;
+      canonicalSv = catalogHit.canonical_sv;
+      categoryKey = catalogHit.category_key;
+      unit = catalogHit.unit;
+      defaultQty = catalogHit.default_qty;
+    }
+  }
+
+  // If the dict/catalog produced a canonical name, re-check items table by
+  // the canonical form before inserting — avoid creating a duplicate of a
+  // grocery item the user has under a different spelling.
+  if (canonicalFi !== input) {
+    const { data: existingCanon } = await supabase
+      .from("items")
+      .select("id, canonical_fi, canonical_sv, unit, default_qty")
+      .eq("household_id", householdId)
+      .eq("canonical_fi", canonicalFi)
+      .maybeSingle();
+    if (existingCanon) {
+      return {
+        id: existingCanon.id as string,
+        canonical_fi: existingCanon.canonical_fi as string,
+        canonical_sv: existingCanon.canonical_sv as string,
+        unit: (existingCanon.unit as string) ?? unit,
+        default_qty: Number(existingCanon.default_qty ?? defaultQty),
+      };
+    }
+  }
+
+  let categoryId: string | null = null;
+  if (categoryKey) {
+    const { data: cat } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("key", categoryKey)
+      .maybeSingle();
+    categoryId = cat?.id ?? null;
+  }
+
   const { data: inserted, error } = await supabase
     .from("items")
     .insert({
       household_id: householdId,
-      canonical_fi: input,
-      canonical_sv: input,
-      category_id: null,
-      unit: "kpl",
-      default_qty: 1,
+      canonical_fi: canonicalFi,
+      canonical_sv: canonicalSv,
+      category_id: categoryId,
+      unit,
+      default_qty: defaultQty,
     })
     .select("id, canonical_fi, canonical_sv, unit, default_qty")
     .single();
@@ -188,8 +248,8 @@ async function resolveItemPlain(householdId: string, rawInput: string) {
     id: inserted.id as string,
     canonical_fi: inserted.canonical_fi as string,
     canonical_sv: inserted.canonical_sv as string,
-    unit: (inserted.unit as string) ?? "kpl",
-    default_qty: Number(inserted.default_qty ?? 1),
+    unit: (inserted.unit as string) ?? unit,
+    default_qty: Number(inserted.default_qty ?? defaultQty),
   };
 }
 
