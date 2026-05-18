@@ -44,9 +44,6 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
     for (const p of parsed) {
       const resolved = await resolveItem(household.id, p.name);
       const qty = p.qty ?? resolved.default_qty;
-      // If the parser already extracted an explicit unit (e.g. "500g" -> kg),
-      // honor it. Otherwise use the canonical unit from the dictionary/Claude.
-      // For meat/fish without explicit weight this means "pkt".
       const unit = p.unit ?? resolved.unit;
 
       const { data: existing } = await supabase
@@ -59,8 +56,6 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
       if (existing) {
         const sameUnit = existing.unit === unit;
         if (!sameUnit && !existing.checked) {
-          // Unit mismatch on an active row: do NOT overwrite. Keep what's
-          // there and report the conflict so the UI can prompt the user.
           conflicts.push({
             name: resolved.canonical_fi,
             existingQty: Number(existing.qty),
@@ -119,12 +114,6 @@ export async function updateListItem(
   revalidatePath("/list");
 }
 
-/**
- * Edit a list row's name + qty + unit in one call.
- * If `name` resolves (via DB match or Claude) to a different item than the
- * row currently references, the row is swapped to that item.
- * Returns the new canonical FI/SV names so the client can show feedback.
- */
 export async function editListItem(
   listItemId: string,
   patch: { name?: string; qty?: number; unit?: string; note?: string | null },
@@ -134,7 +123,6 @@ export async function editListItem(
 > {
   const supabase = await createClient();
 
-  // Load the row + current item
   const { data: row, error: loadErr } = await supabase
     .from("list_items")
     .select(
@@ -191,9 +179,6 @@ export async function editListItem(
   if (patch.note !== undefined) update.note = patch.note;
 
   if (Object.keys(update).length > 0) {
-    // If swapping to an item that's already on the list, we'd violate the
-    // (list_id, item_id) unique constraint. Detect and merge: delete current,
-    // bump qty on the existing target row.
     if (swapped) {
       const { data: existing } = await supabase
         .from("list_items")
@@ -204,8 +189,7 @@ export async function editListItem(
         .maybeSingle();
 
       if (existing) {
-        const sameUnit =
-          existing.unit === (patch.unit ?? row.unit);
+        const sameUnit = existing.unit === (patch.unit ?? row.unit);
         const finalQty = sameUnit
           ? Number(existing.qty) + (patch.qty ?? Number(row.qty))
           : (patch.qty ?? Number(row.qty));
@@ -253,56 +237,59 @@ export async function removeListItem(listItemId: string) {
   await supabase.from("list_items").delete().eq("id", listItemId);
 }
 
-export async function completeList(listId: string) {
+/**
+ * Remove all checked items from the active list. For each removed item we
+ * also log a purchase row so the recurrence engine keeps learning.
+ * Unlike the old `completeList`, this does NOT archive the list — the same
+ * list stays active, just without the cleared items.
+ */
+export async function removeCheckedItems(listId: string): Promise<{
+  ok: boolean;
+  count: number;
+  message?: string;
+}> {
   const supabase = await createClient();
   const household = await getCurrentHousehold();
-  if (!household) return { ok: false as const, error: "no_household" as const };
+  if (!household) return { ok: false, count: 0, message: "no_household" };
 
   const { data: checked, error: fetchErr } = await supabase
     .from("list_items")
-    .select("item_id, qty, unit")
+    .select("id, item_id, qty, unit")
     .eq("list_id", listId)
     .eq("checked", true);
 
-  if (fetchErr) {
-    return {
-      ok: false as const,
-      error: "generic" as const,
-      message: fetchErr.message,
-    };
-  }
-  if (!checked || checked.length === 0) {
-    return { ok: false as const, error: "nothing_checked" as const };
-  }
+  if (fetchErr) return { ok: false, count: 0, message: fetchErr.message };
+  if (!checked || checked.length === 0) return { ok: true, count: 0 };
 
-  const purchaseRows = checked.map((c) => ({
-    household_id: household.id,
-    item_id: c.item_id,
-    qty: c.qty,
-    unit: c.unit,
-    list_id: listId,
-  }));
+  // Log purchases so consumption_profiles learns
+  await supabase.from("purchases").insert(
+    checked.map((c) => ({
+      household_id: household.id,
+      item_id: c.item_id,
+      qty: c.qty,
+      unit: c.unit,
+      list_id: listId,
+    })),
+  );
 
-  const { error: insertErr } = await supabase
-    .from("purchases")
-    .insert(purchaseRows);
-
-  if (insertErr) {
-    return {
-      ok: false as const,
-      error: "generic" as const,
-      message: insertErr.message,
-    };
-  }
-
+  // Delete the checked rows
   await supabase
-    .from("shopping_lists")
-    .update({ status: "completed", completed_at: new Date().toISOString() })
-    .eq("id", listId);
+    .from("list_items")
+    .delete()
+    .in(
+      "id",
+      checked.map((c) => c.id),
+    );
 
   revalidatePath("/list");
-  revalidatePath("/");
-  return { ok: true as const, count: purchaseRows.length };
+  return { ok: true, count: checked.length };
+}
+
+/**
+ * @deprecated Use removeCheckedItems instead. Kept for /history reorder flow.
+ */
+export async function completeList(listId: string) {
+  return removeCheckedItems(listId);
 }
 
 export async function addSuggested(itemId: string) {

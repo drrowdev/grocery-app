@@ -153,6 +153,15 @@ const dict = {
     fi: "esim. 2 maitoa, ruisleipä, 500g jauheliha",
     sv: "t.ex. 2 mjölk, rågbröd, 500g köttfärs",
   },
+  quickAddPlaceholderShort: {
+    fi: "Lisää tuote tai esim. \"2 maitoa\"…",
+    sv: "Lägg till vara, t.ex. \"2 mjölk\"…",
+  },
+  all: { fi: "Kaikki", sv: "Alla" },
+  removeChecked: {
+    fi: "Poista merkityt ({n})",
+    sv: "Ta bort markerade ({n})",
+  },
   quickAddHint: {
     fi: "Useita tuotteita kerralla — pilkulla erotettuna. Käytä mikkiä myös puheella.",
     sv: "Flera varor på en gång — separera med komma. Mikrofonen funkar också.",

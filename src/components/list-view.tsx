@@ -1,73 +1,68 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
-  Check,
-  CheckCircle2,
   History,
   Loader2,
   LogOut,
-  Pencil,
+  Minus,
   Plus,
   ShoppingCart,
-  Sparkles,
-  StickyNote,
-  TrendingDown,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { ActionMenu } from "@/components/action-menu";
 import { VoiceButton } from "@/components/voice-button";
-import { SwipeableRow, buzz } from "@/components/swipeable-row";
 import { createClient } from "@/lib/supabase/client";
-import { capitalizeFirst, UNIT_OPTIONS } from "@/lib/utils";
+import { capitalizeFirst } from "@/lib/utils";
+import { categoryDot } from "@/lib/category-colors";
 import { getItemEmoji } from "@/lib/item-emoji";
 import { signOut } from "@/app/auth/actions";
 import {
-  completeList,
   editListItem,
   quickAdd,
+  removeCheckedItems,
   removeListItem,
   toggleListItem,
+  updateListItem,
 } from "@/app/list/actions";
-import type { ListItemRow, QuickSuggestion } from "@/app/list/page";
-import type { RunningLowItem } from "@/components/running-low-panel";
+import type { ListItemRow } from "@/app/list/page";
 
 const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
 
-const FALLBACK_SUGGESTIONS = ["maitoa", "ruisleipä", "kahvi", "kananmuna", "banaani"];
-
-let tempCounter = 0;
-function nextTempId(): string {
-  tempCounter = (tempCounter + 1) % 1_000_000;
-  return `temp-${tempCounter}`;
+function formatQty(n: number): string {
+  if (Number.isInteger(n)) return String(n);
+  return Number(n).toFixed(2).replace(/\.?0+$/, "");
 }
 
 export function ListView({
   householdName,
   listId,
   initialItems,
-  initialSuggestions,
-  runningLow,
 }: {
   householdName: string;
   listId: string;
   initialItems: ListItemRow[];
-  initialSuggestions: QuickSuggestion[];
-  runningLow: RunningLowItem[];
 }) {
   const router = useRouter();
   const { lang, t } = useLang();
   const [items, setItems] = useState<ListItemRow[]>(initialItems);
   const [pending, startTransition] = useTransition();
-  const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("all");
   const inputRef = useRef<HTMLInputElement>(null);
-  const [showRunningLow, setShowRunningLow] = useState(true);
 
   const refresh = useCallback(async () => {
     const supabase = createClient();
@@ -75,12 +70,11 @@ export function ListView({
       .from("list_items")
       .select(LIST_ITEM_SELECT)
       .eq("list_id", listId)
-      .order("checked")
       .order("added_at");
     if (data) setItems(data as unknown as ListItemRow[]);
   }, [listId]);
 
-  // Realtime sync for multi-device updates (primary path is local refresh below)
+  // Realtime sync for multi-device updates
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -103,93 +97,63 @@ export function ListView({
     };
   }, [listId, refresh]);
 
-  const { unchecked, checked } = useMemo(() => {
-    const u: ListItemRow[] = [];
-    const c: ListItemRow[] = [];
-    for (const r of items) (r.checked ? c : u).push(r);
-    return { unchecked: u, checked: c };
-  }, [items]);
-
+  // Group by category (checked items stay in their category)
   const grouped = useMemo(() => {
     const map = new Map<
       string,
-      { label: string; icon: string; sort: number; rows: ListItemRow[] }
+      {
+        label: string;
+        dotClass: string;
+        sort: number;
+        emoji: string;
+        rows: ListItemRow[];
+      }
     >();
-    for (const item of unchecked) {
+    for (const item of items) {
       const key = item.item.category?.key ?? "other";
       const label =
         lang === "fi"
           ? (item.item.category?.name_fi ?? "Muut")
           : (item.item.category?.name_sv ?? "Övrigt");
-      const icon = item.item.category?.icon ?? "📦";
+      const dotClass = categoryDot(item.item.category?.key);
+      const emoji = item.item.category?.icon ?? "📦";
       const sort = item.item.category?.sort_order ?? 999;
-      if (!map.has(key)) map.set(key, { label, icon, sort, rows: [] });
+      if (!map.has(key)) map.set(key, { label, dotClass, sort, emoji, rows: [] });
       map.get(key)!.rows.push(item);
     }
     return [...map.entries()].sort((a, b) => a[1].sort - b[1].sort);
-  }, [unchecked, lang]);
+  }, [items, lang]);
+
+  const checkedCount = items.filter((r) => r.checked).length;
+  const totalCount = items.length;
+  const progress = totalCount === 0 ? 0 : (checkedCount / totalCount) * 100;
+
+  const filteredGroups = useMemo(() => {
+    if (filter === "all") return grouped;
+    return grouped.filter(([key]) => key === filter);
+  }, [grouped, filter]);
 
   async function submitQuickAdd(text: string) {
     const fd = new FormData();
     fd.set("text", text);
-    startTransition(async () => {
-      setError(null);
-      setToast(null);
-      const res = await quickAdd(fd);
-      if (res.ok) {
-        const total = res.added.length + res.merged.length;
-        const parts: string[] = [];
-        if (total > 0) {
-          parts.push(
-            total === 1
-              ? `${t("itemAdded")}: ${res.added[0] ?? res.merged[0]}`
-              : t("itemsAdded", { n: total }),
-          );
-        }
-        if (res.conflicts.length > 0) {
-          for (const c of res.conflicts) {
-            parts.push(
-              t("conflictKept", {
-                name: c.name,
-                qty: c.existingQty,
-                unit: c.existingUnit,
-              }),
-            );
-          }
-        }
-        setToast(parts.join(" · "));
-        if (inputRef.current) inputRef.current.value = "";
-        await refresh();
-      } else {
-        setError(`${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`);
-      }
-    });
+    setError(null);
+    const res = await quickAdd(fd);
+    if (res.ok) {
+      if (inputRef.current) inputRef.current.value = "";
+      await refresh();
+    } else {
+      setError(`${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`);
+    }
   }
 
-  const onListIds = useMemo(
-    () => new Set(items.map((r) => r.item.id)),
-    [items],
-  );
-  type Suggestion =
-    | (QuickSuggestion & { kind: "known" })
-    | { kind: "fallback"; item_id: string; canonical_fi: string; canonical_sv: string };
-
-  const suggestions = useMemo<Suggestion[]>(() => {
-    const filtered = initialSuggestions
-      .filter((s) => !onListIds.has(s.item_id))
-      .map((s) => ({ ...s, kind: "known" as const }));
-    if (filtered.length > 0) return filtered;
-    // Fallback for brand-new households: hardcoded starter suggestions.
-    return FALLBACK_SUGGESTIONS.map((s) => ({
-      kind: "fallback" as const,
-      item_id: `fallback:${s}`,
-      canonical_fi: s,
-      canonical_sv: s,
-    }));
-  }, [initialSuggestions, onListIds]);
-
   async function handleToggle(rowId: string, nextChecked: boolean) {
-    buzz(nextChecked ? 20 : 10);
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate(nextChecked ? 20 : 10);
+      } catch {
+        // ignore
+      }
+    }
     setItems((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, checked: nextChecked } : r)),
     );
@@ -201,7 +165,6 @@ export function ListView({
   }
 
   async function handleRemove(rowId: string) {
-    buzz(30);
     setItems((prev) => prev.filter((r) => r.id !== rowId));
     try {
       await removeListItem(rowId);
@@ -210,72 +173,28 @@ export function ListView({
     }
   }
 
-  /**
-   * Instant chip-tap path: build an optimistic row from data we already have,
-   * then write directly via the browser Supabase client (no Next.js server
-   * roundtrip, no Claude). Reconcile via realtime/refresh afterwards.
-   */
-  function addByItemFast(opts: {
-    item_id: string;
-    canonical_fi: string;
-    canonical_sv: string;
-    unit: string;
-    default_qty: number;
-    category: ListItemRow["item"]["category"];
-  }) {
-    if (items.some((r) => r.item.id === opts.item_id)) return;
-
-    buzz(15);
-    setError(null);
-    setToast(
-      `${t("itemAdded")}: ${capitalizeFirst(
-        lang === "fi" ? opts.canonical_fi : opts.canonical_sv,
-      )}`,
+  async function handleQtyDelta(row: ListItemRow, delta: number) {
+    const newQty = Math.max(1, Number(row.qty) + delta);
+    if (newQty === Number(row.qty)) return;
+    setItems((prev) =>
+      prev.map((r) => (r.id === row.id ? { ...r, qty: newQty } : r)),
     );
-    const tempId = nextTempId();
-    const optimisticRow: ListItemRow = {
-      id: tempId,
-      qty: opts.default_qty,
-      unit: opts.unit,
-      checked: false,
-      note: null,
-      item: {
-        id: opts.item_id,
-        canonical_fi: opts.canonical_fi,
-        canonical_sv: opts.canonical_sv,
-        category: opts.category,
-      },
-    };
-    setItems((prev) => [...prev, optimisticRow]);
-
-    void (async () => {
-      const supabase = createClient();
-      const { error } = await supabase.from("list_items").insert({
-        list_id: listId,
-        item_id: opts.item_id,
-        qty: opts.default_qty,
-        unit: opts.unit,
-      });
-      if (error) {
-        // Roll back if the write failed
-        setItems((prev) => prev.filter((r) => r.id !== tempId));
-        setError(`${t("errorGeneric")} (${error.message})`);
-        setToast(null);
-        return;
-      }
-      // Re-fetch to replace the temp row with the persisted one (gets real id, etc.)
+    try {
+      await updateListItem(row.id, { qty: newQty });
+    } catch {
       await refresh();
-    })();
+    }
   }
 
-  async function handleEdit(
-    rowId: string,
-    name: string,
-    qty: number,
-    unit: string,
-    note: string | null,
-  ) {
-    const res = await editListItem(rowId, { name, qty, unit, note });
+  async function handleRenameSave(row: ListItemRow, newName: string) {
+    if (!newName.trim() || newName.trim() === (lang === "fi" ? row.item.canonical_fi : row.item.canonical_sv)) {
+      return;
+    }
+    const res = await editListItem(row.id, {
+      name: newName.trim(),
+      qty: Number(row.qty),
+      unit: row.unit,
+    });
     if (!res.ok) {
       setError(`${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`);
     }
@@ -283,493 +202,350 @@ export function ListView({
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-dvh bg-gradient-to-b from-emerald-50 to-white dark:from-zinc-950 dark:to-black">
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/80 dark:bg-zinc-950/80 backdrop-blur">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
-            <ShoppingCart className="h-4.5 w-4.5" />
-          </div>
+    <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
+      <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
-            <h1 className="text-base font-semibold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
+            <h1 className="text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
               {householdName}
             </h1>
-            <p className="text-[11px] text-zinc-500 leading-none mt-0.5 truncate">
-              {items.length === 0
-                ? t("listEmptyShort")
-                : `${unchecked.length} ${t("toBuy")} · ${checked.length} ${t("inCartShort")}`}
-            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 mt-1">
+            <span className="text-sm tabular-nums text-zinc-500">
+              {checkedCount}/{totalCount}
+            </span>
+            <LangToggle />
+            <ActionMenu
+              items={[
+                {
+                  label: t("household"),
+                  icon: <Users className="h-4 w-4" />,
+                  onClick: () => router.push("/household"),
+                },
+                {
+                  label: t("history"),
+                  icon: <History className="h-4 w-4" />,
+                  onClick: () => router.push("/history"),
+                },
+                {
+                  label: t("signOut"),
+                  icon: <LogOut className="h-4 w-4" />,
+                  onClick: () => startTransition(() => signOut()),
+                  danger: true,
+                },
+              ]}
+            />
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <LangToggle />
-          <ActionMenu
-            items={[
-              {
-                label: t("household"),
-                icon: <Users className="h-4 w-4" />,
-                onClick: () => router.push("/household"),
-              },
-              {
-                label: t("history"),
-                icon: <History className="h-4 w-4" />,
-                onClick: () => router.push("/history"),
-              },
-              {
-                label: t("signOut"),
-                icon: <LogOut className="h-4 w-4" />,
-                onClick: () => startTransition(() => signOut()),
-                danger: true,
-              },
-            ]}
-          />
-        </div>
-      </header>
 
-      <main className="flex-1 px-4 py-5 mx-auto w-full max-w-2xl">
+        {/* Input + Add button */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
-            const text = String(fd.get("text") ?? "");
-            if (text.trim()) submitQuickAdd(text);
+            const text = String(fd.get("text") ?? "").trim();
+            if (text) startTransition(() => submitQuickAdd(text));
           }}
-          className="flex flex-col gap-2 mb-4"
+          className="flex gap-2 mb-1.5"
         >
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              name="text"
-              required
-              autoComplete="off"
-              placeholder={t("quickAddPlaceholder")}
-              className="flex-1 rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-base text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-            <VoiceButton
-              onResult={(text) => {
-                if (inputRef.current) inputRef.current.value = text;
-                submitQuickAdd(text);
-              }}
-            />
-            <button
-              type="submit"
-              disabled={pending}
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
-              aria-label={t("add")}
-            >
-              {pending ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Plus className="h-5 w-5" />
-              )}
-            </button>
-          </div>
-          {toast && (
-            <p className="text-sm text-emerald-700 dark:text-emerald-400">
-              {toast}
-            </p>
-          )}
-          {error && <p className="text-sm text-rose-600 break-words">{error}</p>}
-          {!toast && !error && (
-            <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3 text-violet-500" />
-              {t("quickAddHint")}
-            </p>
-          )}
+          <input
+            ref={inputRef}
+            name="text"
+            required
+            autoComplete="off"
+            placeholder={t("quickAddPlaceholderShort")}
+            className="flex-1 rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-base text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+          <VoiceButton
+            onResult={(text) => {
+              if (inputRef.current) inputRef.current.value = text;
+              startTransition(() => submitQuickAdd(text));
+            }}
+          />
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 shadow-sm transition hover:bg-zinc-50 active:scale-95 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+            aria-label={t("add")}
+          >
+            {pending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Plus className="h-5 w-5" />
+            )}
+          </button>
         </form>
 
-        {suggestions.length > 0 && (
-          <div className="mb-4">
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-              {t("frequent")}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {suggestions.map((s) => {
-                const label =
-                  lang === "fi" ? s.canonical_fi : s.canonical_sv;
-                const emoji = getItemEmoji(
-                  s.canonical_fi,
-                  s.kind === "known" ? s.category?.key : null,
-                );
-                return (
-                  <button
-                    key={s.item_id}
-                    type="button"
-                    onClick={() => {
-                      if (s.kind === "known") {
-                        addByItemFast({
-                          item_id: s.item_id,
-                          canonical_fi: s.canonical_fi,
-                          canonical_sv: s.canonical_sv,
-                          unit: s.unit,
-                          default_qty: s.default_qty,
-                          category: s.category,
-                        });
-                      } else {
-                        // Fallback chip — no item_id yet; go through the
-                        // full categorization path so the item gets created.
-                        submitQuickAdd(s.canonical_fi);
-                      }
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 active:scale-95 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
-                  >
-                    <span aria-hidden="true">{emoji}</span>
-                    {capitalizeFirst(label)}
-                  </button>
-                );
-              })}
-            </div>
+        {/* Progress bar */}
+        <div className="h-0.5 mb-4 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+          <div
+            className="h-full bg-emerald-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {error && (
+          <p className="mb-3 text-sm text-rose-600 break-words">{error}</p>
+        )}
+
+        {/* Category filter tabs */}
+        {totalCount > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 mb-4 -mx-5 px-5 scrollbar-none">
+            <FilterChip
+              active={filter === "all"}
+              onClick={() => setFilter("all")}
+              label={t("all")}
+              count={totalCount}
+              dotClass=""
+            />
+            {grouped.map(([key, group]) => (
+              <FilterChip
+                key={key}
+                active={filter === key}
+                onClick={() => setFilter(key)}
+                label={group.label}
+                count={group.rows.length}
+                dotClass={group.dotClass}
+              />
+            ))}
           </div>
         )}
 
-        {showRunningLow && runningLow.length > 0 && (
-          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50/70 p-3 dark:border-orange-900/40 dark:bg-orange-950/20">
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-orange-900 dark:text-orange-200">
-                <TrendingDown className="h-3.5 w-3.5" />
-                {t("runningLowSoon")}
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowRunningLow(false)}
-                className="text-xs text-orange-800/60 hover:text-orange-900 dark:text-orange-300/60 dark:hover:text-orange-300"
-              >
-                ×
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {runningLow.map((it) => {
-                const label =
-                  lang === "fi" ? it.canonical_fi : it.canonical_sv;
-                const emoji = getItemEmoji(
-                  it.canonical_fi,
-                  it.category?.key,
-                );
-                return (
-                  <button
-                    key={it.item_id}
-                    type="button"
-                    onClick={() =>
-                      addByItemFast({
-                        item_id: it.item_id,
-                        canonical_fi: it.canonical_fi,
-                        canonical_sv: it.canonical_sv,
-                        unit: it.unit,
-                        default_qty: it.default_qty,
-                        category: it.category,
-                      })
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-xs font-medium text-orange-900 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-zinc-900 dark:text-orange-200"
-                  >
-                    <span aria-hidden="true">{emoji}</span>
-                    {capitalizeFirst(label)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
+        {/* List */}
+        {totalCount === 0 ? (
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-10 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
             <ShoppingCart className="mx-auto h-8 w-8 text-zinc-300 dark:text-zinc-700" />
             <p className="mt-2 text-sm text-zinc-500">{t("listEmpty")}</p>
           </div>
         ) : (
           <div className="space-y-5">
-            {grouped.map(([key, group]) => (
+            {filteredGroups.map(([key, group]) => (
               <section key={key}>
-                <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  <span className="text-base">{group.icon}</span>
+                <h2 className="mb-2 flex items-center gap-2 text-xs font-medium text-zinc-500">
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${group.dotClass}`}
+                  />
                   {group.label}
-                  <span className="text-zinc-400">· {group.rows.length}</span>
                 </h2>
-                <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white shadow-sm dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+                <ul className="space-y-1.5">
                   {group.rows.map((row) => (
-                    <ListRow
+                    <ListItemRowComp
                       key={row.id}
                       row={row}
                       lang={lang}
-                      onToggle={() => handleToggle(row.id, true)}
+                      onToggle={() => handleToggle(row.id, !row.checked)}
                       onRemove={() => handleRemove(row.id)}
-                      onEdit={(name, qty, unit, note) =>
-                        handleEdit(row.id, name, qty, unit, note)
-                      }
+                      onDelta={(d) => handleQtyDelta(row, d)}
+                      onRenameSave={(name) => handleRenameSave(row, name)}
                     />
                   ))}
                 </ul>
               </section>
             ))}
+          </div>
+        )}
 
-            {checked.length > 0 && (
-              <section>
-                <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  {t("inCart", { n: checked.length })}
-                </h2>
-                <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white/60 shadow-sm dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/60">
-                  {checked.map((row) => (
-                    <ListRow
-                      key={row.id}
-                      row={row}
-                      lang={lang}
-                      checkedStyle
-                      onToggle={() => handleToggle(row.id, false)}
-                      onRemove={() => handleRemove(row.id)}
-                      onEdit={(name, qty, unit, note) =>
-                        handleEdit(row.id, name, qty, unit, note)
-                      }
-                    />
-                  ))}
-                </ul>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    startTransition(async () => {
-                      setError(null);
-                      const res = await completeList(listId);
-                      if (!res.ok) {
-                        setError(
-                          `${t("errorGeneric")}${"message" in res && res.message ? ` (${res.message})` : ""}`,
-                        );
-                      } else {
-                        await refresh();
-                      }
-                    })
+        {/* Remove checked items */}
+        {checkedCount > 0 && (
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={() =>
+                startTransition(async () => {
+                  setError(null);
+                  const res = await removeCheckedItems(listId);
+                  if (!res.ok) {
+                    setError(
+                      `${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`,
+                    );
+                  } else {
+                    await refresh();
                   }
-                  disabled={pending}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
-                >
-                  {pending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                  {t("completeShopping", { n: checked.length })}
-                </button>
-              </section>
-            )}
+                })
+              }
+              disabled={pending}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 active:scale-95 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+            >
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              {t("removeChecked", { n: checkedCount })}
+            </button>
           </div>
         )}
       </main>
-
-      <footer className="px-5 py-4 text-center text-xs text-zinc-400">
-        Ostoslista · v0.1
-      </footer>
     </div>
   );
 }
 
-function ListRow({
+function FilterChip({
+  active,
+  onClick,
+  label,
+  count,
+  dotClass,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  dotClass: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition active:scale-95 ${
+        active
+          ? "border-zinc-300 bg-white text-zinc-900 shadow-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
+          : "border-zinc-200 bg-transparent text-zinc-600 hover:bg-white dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900"
+      }`}
+    >
+      {dotClass && (
+        <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
+      )}
+      {label}
+      <span className="text-zinc-400">{count}</span>
+    </button>
+  );
+}
+
+function ListItemRowComp({
   row,
   lang,
   onToggle,
   onRemove,
-  onEdit,
-  checkedStyle = false,
+  onDelta,
+  onRenameSave,
 }: {
   row: ListItemRow;
   lang: "fi" | "sv";
-  onToggle: () => Promise<void> | void;
-  onRemove: () => Promise<void> | void;
-  onEdit: (
-    name: string,
-    qty: number,
-    unit: string,
-    note: string | null,
-  ) => Promise<void> | void;
-  checkedStyle?: boolean;
+  onToggle: () => void;
+  onRemove: () => void;
+  onDelta: (delta: number) => void;
+  onRenameSave: (name: string) => void;
 }) {
-  const { t } = useLang();
-  const [draft, setDraft] = useState<
-    { name: string; qty: string; unit: string; note: string } | null
-  >(null);
-  const [busy, setBusy] = useState(false);
-
-  const name =
-    lang === "fi" ? row.item.canonical_fi : row.item.canonical_sv;
+  const name = lang === "fi" ? row.item.canonical_fi : row.item.canonical_sv;
   const emoji = getItemEmoji(row.item.canonical_fi, row.item.category?.key);
 
-  if (draft) {
-    return (
-      <li className="flex flex-col gap-2 px-3 py-3 bg-emerald-50/60 dark:bg-emerald-950/20">
-        <input
-          type="text"
-          value={draft.name}
-          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-          className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          autoFocus
-          placeholder={t("addItemPlaceholder")}
-        />
-        <input
-          type="text"
-          value={draft.note}
-          onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-          maxLength={120}
-          className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          placeholder={t("notePlaceholder")}
-        />
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={draft.qty}
-            onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
-            className="w-24 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          />
-          <select
-            value={draft.unit}
-            onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
-            className="rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          >
-            {UNIT_OPTIONS.map((u) => (
-              <option key={u} value={u}>
-                {u}
-              </option>
-            ))}
-          </select>
-          <div className="ml-auto flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setDraft(null)}
-              disabled={busy}
-              className="rounded-md px-2.5 py-1.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              {t("cancel")}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={async () => {
-                const n = parseFloat(draft.qty.replace(",", "."));
-                if (!(Number.isFinite(n) && n > 0)) return;
-                setBusy(true);
-                const noteToSave = draft.note.trim() || null;
-                await onEdit(
-                  draft.name.trim() || name,
-                  n,
-                  draft.unit,
-                  noteToSave,
-                );
-                setBusy(false);
-                setDraft(null);
-              }}
-              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
-            >
-              {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )}
-              {t("save")}
-            </button>
-          </div>
-        </div>
-      </li>
-    );
-  }
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(name);
 
   return (
-    <SwipeableRow
-      leftAction={{
-        side: "left",
-        bg: "bg-rose-600",
-        icon: <Trash2 className="h-5 w-5" />,
-        label: t("remove"),
-        onTrigger: () => void onRemove(),
-      }}
-      rightAction={{
-        side: "right",
-        bg: checkedStyle ? "bg-zinc-500" : "bg-emerald-600",
-        icon: <Check className="h-5 w-5" />,
-        label: checkedStyle ? t("uncheck") : t("check"),
-        onTrigger: () => void onToggle(),
-      }}
-    >
-      <li className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-zinc-900">
-        <button
-          type="button"
-          onClick={() => void onToggle()}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${
-            checkedStyle
-              ? "border-emerald-600 bg-emerald-600 text-white"
-              : "border-zinc-300 bg-white hover:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-950"
-          }`}
-          aria-label={checkedStyle ? "Uncheck" : "Check"}
-        >
-          {checkedStyle && <Check className="h-4 w-4" />}
-        </button>
-        <span className="text-xl shrink-0 select-none" aria-hidden="true">
-          {emoji}
-        </span>
-        <button
-          type="button"
-          onClick={() =>
-            setDraft({
-              name,
-              qty: String(row.qty),
-              unit: row.unit,
-              note: row.note ?? "",
-            })
-          }
-          className="min-w-0 flex-1 text-left"
-          aria-label={t("edit")}
-        >
-          <p
-            className={`text-sm font-medium truncate ${
-              checkedStyle
+    <li className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-2 shadow-sm dark:bg-zinc-900">
+      {/* Checkbox */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
+          row.checked
+            ? "border-emerald-600 bg-emerald-600 text-white"
+            : "border-zinc-300 bg-white hover:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-950"
+        }`}
+        aria-label={row.checked ? "Uncheck" : "Check"}
+      >
+        {row.checked && <CheckIcon />}
+      </button>
+
+      {/* Emoji */}
+      <span className="text-lg shrink-0 select-none" aria-hidden="true">
+        {emoji}
+      </span>
+
+      {/* Name (editable inline) */}
+      <div className="min-w-0 flex-1">
+        {editingName ? (
+          <input
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onBlur={() => {
+              setEditingName(false);
+              onRenameSave(draftName);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              } else if (e.key === "Escape") {
+                setDraftName(name);
+                setEditingName(false);
+              }
+            }}
+            autoFocus
+            className="w-full rounded-md bg-zinc-100 px-2 py-0.5 text-sm font-medium text-zinc-900 outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-zinc-800 dark:text-zinc-50"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setDraftName(name);
+              setEditingName(true);
+            }}
+            className={`block w-full text-left text-sm font-medium truncate ${
+              row.checked
                 ? "text-zinc-400 line-through dark:text-zinc-500"
                 : "text-zinc-900 dark:text-zinc-50"
             }`}
           >
             {capitalizeFirst(name)}
-          </p>
-          {row.note && (
-            <p
-              className={`mt-0.5 flex items-center gap-1 text-xs truncate ${
-                checkedStyle ? "text-zinc-400" : "text-zinc-500 dark:text-zinc-500"
-              }`}
-            >
-              <StickyNote className="h-3 w-3 shrink-0" />
-              {row.note}
-            </p>
-          )}
-        </button>
+          </button>
+        )}
+        {row.note && !editingName && (
+          <p className="text-[11px] text-zinc-500 truncate">{row.note}</p>
+        )}
+      </div>
+
+      {/* Qty stepper */}
+      <div className="flex items-center gap-1 shrink-0">
         <button
           type="button"
-          onClick={() =>
-            setDraft({
-              name,
-              qty: String(row.qty),
-              unit: row.unit,
-              note: row.note ?? "",
-            })
-          }
-          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums transition ${
-            checkedStyle
-              ? "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
-              : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
-          }`}
-          aria-label={t("edit")}
+          onClick={() => onDelta(-1)}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50 active:scale-95 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+          disabled={Number(row.qty) <= 1}
+          aria-label="Decrease"
         >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+        <span className="min-w-[3rem] text-center text-sm tabular-nums text-zinc-700 dark:text-zinc-200">
           {formatQty(row.qty)} {row.unit}
-          <Pencil className="h-3 w-3 opacity-60" />
-        </button>
+        </span>
         <button
           type="button"
-          onClick={() => void onRemove()}
-          className="rounded-md p-1.5 text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
-          aria-label={t("remove")}
+          onClick={() => onDelta(1)}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+          aria-label="Increase"
         >
-          <Trash2 className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
         </button>
-      </li>
-    </SwipeableRow>
+      </div>
+
+      {/* Remove */}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-rose-950/30"
+        aria-label="Remove"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </li>
   );
 }
 
-function formatQty(n: number): string {
-  if (Number.isInteger(n)) return String(n);
-  return Number(n).toFixed(2).replace(/\.?0+$/, "");
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
 }
