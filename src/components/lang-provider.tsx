@@ -32,7 +32,8 @@ function subscribe(callback: () => void) {
 
 function getSnapshot(): Lang {
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "sv" ? "sv" : "fi";
+  if (stored === "sv" || stored === "fi") return stored;
+  return DEFAULT_LANG;
 }
 
 function getServerSnapshot(): Lang {
