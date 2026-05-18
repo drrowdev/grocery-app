@@ -109,6 +109,11 @@ const dict = {
   },
   listTypeGrocery: { fi: "Ruokakauppa", sv: "Mat" },
   listTypeGeneral: { fi: "Muu lista", sv: "Annan lista" },
+  aiSuggests: { fi: "Tekoäly ehdottaa", sv: "AI föreslår" },
+  aiSuggestHint: {
+    fi: "Ehdotukset perustuvat ostohistoriaasi.",
+    sv: "Förslag baseras på din inköpshistorik.",
+  },
   rename: { fi: "Nimeä uudelleen", sv: "Byt namn" },
   deleteListConfirm: {
     fi: "Poistetaanko lista \"{name}\" ja sen tuotteet?",

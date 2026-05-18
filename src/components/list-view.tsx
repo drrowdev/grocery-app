@@ -27,6 +27,10 @@ import {
 import type { ListItemRow, ListSummary, QuickSuggestion } from "@/app/list/page";
 import { ListPicker } from "@/components/list-picker";
 import { ListRail } from "@/components/list-rail";
+import {
+  AiSuggestionCard,
+  type AiSuggestion,
+} from "@/components/ai-suggestion-card";
 
 const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
@@ -50,6 +54,7 @@ export function ListView({
   currentListType,
   initialItems,
   initialSuggestions,
+  aiSuggestions,
 }: {
   isOwner: boolean;
   lists: ListSummary[];
@@ -58,6 +63,7 @@ export function ListView({
   currentListType: "grocery" | "general";
   initialItems: ListItemRow[];
   initialSuggestions: QuickSuggestion[];
+  aiSuggestions: AiSuggestion[];
 }) {
   const { lang, t } = useLang();
   const [items, setItems] = useState<ListItemRow[]>(initialItems);
@@ -280,7 +286,15 @@ export function ListView({
         />
       </div>
       <div className="flex-1 px-4 pb-5 mx-auto w-full max-w-5xl flex gap-4">
-        <ListRail currentId={currentListId} lists={lists} />
+        <div className="hidden md:flex flex-col shrink-0 w-52">
+          <ListRail currentId={currentListId} lists={lists} />
+          {currentListType === "grocery" && (
+            <AiSuggestionCard
+              suggestions={aiSuggestions}
+              currentListId={currentListId}
+            />
+          )}
+        </div>
         <main className="flex-1 min-w-0 max-w-2xl mx-auto">
 
         {/* Input + Add button */}

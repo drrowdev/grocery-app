@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentHousehold } from "@/lib/household";
 import { getOrCreateActiveList } from "@/lib/list";
 import { ListView } from "@/components/list-view";
+import type { AiSuggestion } from "@/components/ai-suggestion-card";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +115,7 @@ export default async function ListPage({
   let errorDetail: string | null = null;
   let rows: ListItemRow[] = [];
   let quickSuggestions: QuickSuggestion[] = [];
+  let aiSuggestions: AiSuggestion[] = [];
 
   try {
     const { data, error } = await supabase
@@ -175,6 +177,59 @@ export default async function ListPage({
         default_qty: Number(r.default_qty),
         category: r.category,
       }));
+    // AI proactive suggestions: recurring items past or near their predicted
+    // re-purchase date, not currently on any active list in this household.
+    const horizon = new Date(Date.now() + 2 * 86400000).toISOString();
+    const [lowRes, onListsRes] = await Promise.all([
+      supabase
+        .from("consumption_profiles")
+        .select(
+          "item_id, avg_qty, avg_cycle_days, last_purchased_at, next_predicted_date, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key))",
+        )
+        .eq("household_id", household.id)
+        .eq("is_recurring", true)
+        .lte("next_predicted_date", horizon)
+        .order("next_predicted_date", { ascending: true })
+        .limit(20),
+      supabase
+        .from("list_items")
+        .select("item_id, shopping_lists!inner(household_id, status)")
+        .eq("shopping_lists.household_id", household.id)
+        .eq("shopping_lists.status", "active"),
+    ]);
+
+    type LowRow = {
+      item_id: string;
+      avg_qty: number | null;
+      avg_cycle_days: number | null;
+      last_purchased_at: string | null;
+      next_predicted_date: string | null;
+      item: {
+        canonical_fi: string;
+        canonical_sv: string;
+        unit: string;
+        default_qty: number;
+        category: { key: string } | null;
+      } | null;
+    };
+
+    const onAnyList = new Set(
+      (onListsRes.data ?? []).map((r) => r.item_id as string),
+    );
+
+    aiSuggestions = ((lowRes.data ?? []) as unknown as LowRow[])
+      .filter((r) => r.item && !onAnyList.has(r.item_id))
+      .slice(0, 6)
+      .map((r) => ({
+        item_id: r.item_id,
+        canonical_fi: r.item!.canonical_fi,
+        canonical_sv: r.item!.canonical_sv,
+        unit: r.item!.unit,
+        default_qty: Number(r.item!.default_qty),
+        category_key: r.item!.category?.key ?? null,
+        avg_cycle_days: r.avg_cycle_days,
+        last_purchased_at: r.last_purchased_at,
+      }));
   } catch (e) {
     errorDetail =
       e instanceof Error
@@ -216,6 +271,7 @@ export default async function ListPage({
       currentListType={selected.type}
       initialItems={rows}
       initialSuggestions={quickSuggestions}
+      aiSuggestions={aiSuggestions}
     />
   );
 }

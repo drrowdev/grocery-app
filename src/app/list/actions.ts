@@ -304,13 +304,53 @@ export async function editListItem(
 
 export async function toggleListItem(listItemId: string, checked: boolean) {
   const supabase = await createClient();
-  await supabase
+  const household = await getCurrentHousehold();
+  if (!household) return;
+
+  const { data: row } = await supabase
     .from("list_items")
-    .update({
-      checked,
-      checked_at: checked ? new Date().toISOString() : null,
-    })
-    .eq("id", listItemId);
+    .select("item_id, qty, unit, list_id, purchase_id")
+    .eq("id", listItemId)
+    .maybeSingle();
+  if (!row) return;
+
+  if (checked) {
+    // Create a purchase row and link it on the list_item.
+    const { data: purchase } = await supabase
+      .from("purchases")
+      .insert({
+        household_id: household.id,
+        item_id: row.item_id,
+        qty: row.qty,
+        unit: row.unit,
+        list_id: row.list_id,
+      })
+      .select("id")
+      .single();
+
+    await supabase
+      .from("list_items")
+      .update({
+        checked: true,
+        checked_at: new Date().toISOString(),
+        purchase_id: purchase?.id ?? null,
+      })
+      .eq("id", listItemId);
+  } else {
+    // Unchecking removes the linked purchase. The DB delete trigger
+    // recomputes consumption_profiles automatically.
+    if (row.purchase_id) {
+      await supabase.from("purchases").delete().eq("id", row.purchase_id);
+    }
+    await supabase
+      .from("list_items")
+      .update({
+        checked: false,
+        checked_at: null,
+        purchase_id: null,
+      })
+      .eq("id", listItemId);
+  }
 }
 
 export async function removeListItem(listItemId: string) {
@@ -319,10 +359,8 @@ export async function removeListItem(listItemId: string) {
 }
 
 /**
- * Remove all checked items from the active list. For each removed item we
- * also log a purchase row so the recurrence engine keeps learning.
- * Unlike the old `completeList`, this does NOT archive the list — the same
- * list stays active, just without the cleared items.
+ * Remove all checked items from the active list. Purchases were already
+ * logged when each item was checked, so this just deletes the list_items.
  */
 export async function removeCheckedItems(listId: string): Promise<{
   ok: boolean;
@@ -335,25 +373,13 @@ export async function removeCheckedItems(listId: string): Promise<{
 
   const { data: checked, error: fetchErr } = await supabase
     .from("list_items")
-    .select("id, item_id, qty, unit")
+    .select("id")
     .eq("list_id", listId)
     .eq("checked", true);
 
   if (fetchErr) return { ok: false, count: 0, message: fetchErr.message };
   if (!checked || checked.length === 0) return { ok: true, count: 0 };
 
-  // Log purchases so consumption_profiles learns
-  await supabase.from("purchases").insert(
-    checked.map((c) => ({
-      household_id: household.id,
-      item_id: c.item_id,
-      qty: c.qty,
-      unit: c.unit,
-      list_id: listId,
-    })),
-  );
-
-  // Delete the checked rows
   await supabase
     .from("list_items")
     .delete()
