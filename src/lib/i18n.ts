@@ -132,7 +132,7 @@ const dict = {
   },
   aiSubIdle: {
     fi: "Rastita tuotteet sitä mukaa kun hankit ne — niin opin tavat.",
-    sv: "Bocka av varorna när du köpt dem — då lär jag mig dina vanor.",
+    sv: "Klicka av varorna när du köpt dem — då lär jag mig dina vanor.",
   },
   rename: { fi: "Nimeä uudelleen", sv: "Byt namn" },
   deleteListConfirm: {
