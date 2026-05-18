@@ -26,12 +26,25 @@ export async function quickAdd(formData: FormData): Promise<QuickAddResult> {
   try {
     const supabase = await createClient();
 
-    // What kind of list are we adding to? (Defaults to grocery if no list ID
-    // is bound to this action — quickAdd is invoked from /list which uses
-    // getOrCreateActiveList; for a non-default list the type lookup happens
-    // below via the active list query.)
-    const list = await getOrCreateActiveList(household.id);
-    const isGeneralList = await getListType(supabase, list.id) === "general";
+    // Resolve which list to add to. Prefer the explicit listId passed by the
+    // form (so the user is always adding to the list they're viewing); fall
+    // back to the household's first active list only if none is supplied.
+    const explicitListId = String(formData.get("listId") ?? "").trim();
+    let list: { id: string; name: string };
+    if (explicitListId) {
+      const { data: row } = await supabase
+        .from("shopping_lists")
+        .select("id, name")
+        .eq("id", explicitListId)
+        .eq("household_id", household.id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (row) list = row;
+      else list = await getOrCreateActiveList(household.id);
+    } else {
+      list = await getOrCreateActiveList(household.id);
+    }
+    const isGeneralList = (await getListType(supabase, list.id)) === "general";
 
     const parsed = isGeneralList
       ? // For general lists, take the input as-is, one item per line/comma
@@ -356,6 +369,7 @@ export async function toggleListItem(listItemId: string, checked: boolean) {
 export async function removeListItem(listItemId: string) {
   const supabase = await createClient();
   await supabase.from("list_items").delete().eq("id", listItemId);
+  revalidatePath("/list");
 }
 
 /**

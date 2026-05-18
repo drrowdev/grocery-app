@@ -1,12 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Aggressive Router prefetch cache: cached pages stay warm in client
-  // for 10 minutes so back/forward + sibling navigation is instant.
+  // Keep prefetched pages warm in the client briefly so list-rail switches
+  // feel instant, but short enough that mutations on one list show up when
+  // you flip between lists. 30s is the Next 15+ default for `dynamic`.
   experimental: {
     staleTimes: {
-      dynamic: 600,
-      static: 600,
+      dynamic: 30,
+      static: 180,
     },
   },
 };

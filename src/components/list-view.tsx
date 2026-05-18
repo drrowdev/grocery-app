@@ -157,6 +157,7 @@ export function ListView({
   async function submitQuickAdd(text: string) {
     const fd = new FormData();
     fd.set("text", text);
+    fd.set("listId", currentListId);
     setError(null);
     const res = await quickAdd(fd);
     if (res.ok) {
