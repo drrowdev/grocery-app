@@ -37,10 +37,16 @@ import {
   toggleListItem,
   updateListItem,
 } from "@/app/list/actions";
-import type { ListItemRow } from "@/app/list/page";
+import type { ListItemRow, QuickSuggestion } from "@/app/list/page";
 
 const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
+
+let tempCounter = 0;
+function nextTempId(): string {
+  tempCounter = (tempCounter + 1) % 1_000_000;
+  return `temp-${tempCounter}`;
+}
 
 function formatQty(n: number): string {
   if (Number.isInteger(n)) return String(n);
@@ -51,10 +57,12 @@ export function ListView({
   householdName,
   listId,
   initialItems,
+  initialSuggestions,
 }: {
   householdName: string;
   listId: string;
   initialItems: ListItemRow[];
+  initialSuggestions: QuickSuggestion[];
 }) {
   const router = useRouter();
   const { lang, t } = useLang();
@@ -63,6 +71,15 @@ export function ListView({
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const onListIds = useMemo(
+    () => new Set(items.map((r) => r.item.id)),
+    [items],
+  );
+  const suggestions = useMemo(
+    () => initialSuggestions.filter((s) => !onListIds.has(s.item_id)),
+    [initialSuggestions, onListIds],
+  );
 
   const refresh = useCallback(async () => {
     const supabase = createClient();
@@ -201,6 +218,51 @@ export function ListView({
     await refresh();
   }
 
+  /**
+   * Instant chip-tap path: optimistic insert + direct browser write.
+   */
+  function addByItemFast(s: QuickSuggestion) {
+    if (items.some((r) => r.item.id === s.item_id)) return;
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate(10);
+      } catch {
+        // ignore
+      }
+    }
+    const tempId = nextTempId();
+    const optimisticRow: ListItemRow = {
+      id: tempId,
+      qty: s.default_qty,
+      unit: s.unit,
+      checked: false,
+      note: null,
+      item: {
+        id: s.item_id,
+        canonical_fi: s.canonical_fi,
+        canonical_sv: s.canonical_sv,
+        category: s.category,
+      },
+    };
+    setItems((prev) => [...prev, optimisticRow]);
+
+    void (async () => {
+      const supabase = createClient();
+      const { error: insertErr } = await supabase.from("list_items").insert({
+        list_id: listId,
+        item_id: s.item_id,
+        qty: s.default_qty,
+        unit: s.unit,
+      });
+      if (insertErr) {
+        setItems((prev) => prev.filter((r) => r.id !== tempId));
+        setError(`${t("errorGeneric")} (${insertErr.message})`);
+        return;
+      }
+      await refresh();
+    })();
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
       <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
@@ -287,6 +349,28 @@ export function ListView({
 
         {error && (
           <p className="mb-3 text-sm text-rose-600 break-words">{error}</p>
+        )}
+
+        {/* Quick-add chips: most-used household items, instant tap */}
+        {suggestions.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 mb-3 -mx-5 px-5 scrollbar-none">
+            {suggestions.map((s) => {
+              const label = lang === "fi" ? s.canonical_fi : s.canonical_sv;
+              const emoji = getItemEmoji(s.canonical_fi, s.category?.key);
+              return (
+                <button
+                  key={s.item_id}
+                  type="button"
+                  onClick={() => addByItemFast(s)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+                >
+                  <span aria-hidden="true">{emoji}</span>
+                  {capitalizeFirst(label)}
+                  <Plus className="h-3 w-3 text-zinc-400" />
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {/* Category filter tabs */}
