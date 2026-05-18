@@ -286,7 +286,7 @@ export function ListView({
         />
       </div>
       <div className="flex-1 px-4 pb-5 mx-auto w-full max-w-5xl flex gap-4">
-        <div className="hidden md:flex flex-col shrink-0 w-52">
+        <div className="hidden md:flex flex-col shrink-0 w-52 self-start">
           <ListRail currentId={currentListId} lists={lists} />
           {currentListType === "grocery" && (
             <AiSuggestionCard
@@ -295,7 +295,7 @@ export function ListView({
             />
           )}
         </div>
-        <main className="flex-1 min-w-0 max-w-2xl mx-auto">
+        <main className="flex-1 min-w-0">
 
         {/* Input + Add button */}
         <form
