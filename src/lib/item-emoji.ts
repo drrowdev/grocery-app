@@ -12,6 +12,7 @@ const ITEM_EMOJI: Record<string, string> = {
   jogurtti: "🥣",
   juusto: "🧀",
   raejuusto: "🧀",
+  rahka: "🥣",
   voi: "🧈",
   margariini: "🧈",
   kananmuna: "🥚",

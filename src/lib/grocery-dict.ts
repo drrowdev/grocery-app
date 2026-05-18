@@ -34,6 +34,8 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["juusto", "juustoa", "ost", "cheese"] },
   { fi: "raejuusto", sv: "keso", category: "dairy", unit: "pkt", default_qty: 1,
     aliases: ["raejuusto", "raejuustoa", "keso", "cottage cheese"] },
+  { fi: "rahka", sv: "kvarg", category: "dairy", unit: "pkt", default_qty: 1,
+    aliases: ["rahka", "rahkaa", "kvarg", "kvargen", "quark", "vaniljarahka", "marjarahka", "maitorahka"] },
   { fi: "voi", sv: "smör", category: "dairy", unit: "pkt", default_qty: 1,
     aliases: ["voi", "voita", "smör", "butter"] },
   { fi: "margariini", sv: "margarin", category: "dairy", unit: "pkt", default_qty: 1,
