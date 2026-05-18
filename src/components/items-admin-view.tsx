@@ -27,12 +27,28 @@ export function ItemsAdminView({
     "uncategorized",
   );
   const [search, setSearch] = useState("");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return items.filter((i) => {
-      if (filter === "uncategorized" && i.category_key) return false;
+      // Always show an item the user is actively editing, regardless of
+      // filter — otherwise setting a category makes the row vanish before
+      // the user can rename / add aliases.
+      const isOpen = expandedIds.has(i.id);
+      if (!isOpen) {
+        if (filter === "uncategorized" && i.category_key) return false;
+      }
       if (needle) {
         const haystack = `${i.canonical_fi} ${i.canonical_sv} ${i.aliases
           .map((a) => a.alias)
@@ -41,7 +57,7 @@ export function ItemsAdminView({
       }
       return true;
     });
-  }, [items, filter, search]);
+  }, [items, filter, search, expandedIds]);
 
   const uncategorizedCount = items.filter((i) => !i.category_key).length;
 
@@ -211,6 +227,8 @@ export function ItemsAdminView({
                 item={item}
                 categories={categories}
                 lang={lang}
+                expanded={expandedIds.has(item.id)}
+                onToggleExpand={() => toggleExpanded(item.id)}
                 onSetCategory={(k) => handleSetCategory(item, k)}
                 onRename={(fi, sv) => handleRename(item, fi, sv)}
                 onAddAlias={(a) => handleAddAlias(item, a)}
@@ -230,6 +248,8 @@ function ItemRow({
   item,
   categories,
   lang,
+  expanded,
+  onToggleExpand,
   onSetCategory,
   onRename,
   onAddAlias,
@@ -240,6 +260,8 @@ function ItemRow({
   item: AdminItem;
   categories: AdminCategory[];
   lang: "fi" | "sv";
+  expanded: boolean;
+  onToggleExpand: () => void;
   onSetCategory: (key: string | null) => void;
   onRename: (fi: string, sv: string) => void;
   onRemoveAlias: (alias: string, lang: "fi" | "sv") => void;
@@ -247,7 +269,6 @@ function ItemRow({
   onDelete: () => void;
   t: (k: TKey, params?: Record<string, string | number>) => string;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [fi, setFi] = useState(item.canonical_fi);
   const [sv, setSv] = useState(item.canonical_sv);
   const [newAlias, setNewAlias] = useState("");
@@ -260,7 +281,7 @@ function ItemRow({
     <li className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={onToggleExpand}
         className="flex w-full items-center gap-3 px-4 py-3 text-left"
       >
         <div className="flex-1 min-w-0">

@@ -251,7 +251,7 @@ const dict = {
     fi: "ja valitse \"Lisää aloitusnäyttöön\".",
     sv: "och välj \"Lägg till på hemskärmen\".",
   },
-  manageItems: { fi: "Hallinnoi tuotteita", sv: "Hantera varor" },
+  manageItems: { fi: "Luokittelemattomat", sv: "Okategoriserade" },
   itemsAdmin: { fi: "Tuoteluettelo", sv: "Varuregister" },
   itemsAdminSubtitle: {
     fi: "Tarkista ja korjaa kotitalouden tuotteiden kategoriat.",

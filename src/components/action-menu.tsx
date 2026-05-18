@@ -8,6 +8,7 @@ export type MenuItem = {
   icon?: ReactNode;
   onClick: () => void;
   danger?: boolean;
+  badge?: number;
 };
 
 export function ActionMenu({ items }: { items: MenuItem[] }) {
@@ -63,7 +64,12 @@ export function ActionMenu({ items }: { items: MenuItem[] }) {
               }`}
             >
               {item.icon}
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {typeof item.badge === "number" && item.badge > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white">
+                  {item.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, History, LogOut, Tag, Users } from "lucide-react";
@@ -8,6 +8,7 @@ import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { ActionMenu } from "@/components/action-menu";
 import { signOut } from "@/app/auth/actions";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Shared header used on /list, /household, /history, /items. Keeps title +
@@ -30,6 +31,7 @@ export function AppHeader({
 }) {
   const router = useRouter();
   const { t } = useLang();
+  const [uncategorizedCount, setUncategorizedCount] = useState<number>(0);
 
   // Prefetch sibling routes so navigation feels instant
   useEffect(() => {
@@ -40,6 +42,26 @@ export function AppHeader({
     }
     router.prefetch("/history");
   }, [router, isOwner]);
+
+  // Owners see a live count of uncategorised items in the ⋯ menu so they
+  // know when items need cleaning up.
+  useEffect(() => {
+    if (!isOwner) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { count } = await supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .is("category_id", null);
+      if (!cancelled && typeof count === "number") {
+        setUncategorizedCount(count);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner]);
 
   const menuItems = [
     {
@@ -63,6 +85,7 @@ export function AppHeader({
       label: t("manageItems"),
       icon: <Tag className="h-4 w-4" />,
       onClick: () => router.push("/items"),
+      badge: uncategorizedCount,
     });
   }
   menuItems.push({
