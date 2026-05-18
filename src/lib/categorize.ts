@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAnthropic, CLAUDE_MODEL } from "@/lib/anthropic";
 import { createClient } from "@/lib/supabase/server";
 import { lookupDict } from "@/lib/grocery-dict";
+import { lookupCatalog } from "@/lib/product-catalog";
 import { toFinlandSwedish, finlandSwedishToFinnish } from "@/lib/fsob";
 
 export const CATEGORY_KEYS = [
@@ -121,6 +122,7 @@ export async function categorizeWithClaude(input: string): Promise<ClaudeItem> {
  * Swedish form to Finland-Swedish (finlandssvenska) using FSOB.
  */
 async function categorize(input: string): Promise<ClaudeItem> {
+  // 1. Curated dictionary (60+ common items with Finland-Swedish correctness)
   const dictHit = lookupDict(input);
   if (dictHit) {
     return {
@@ -132,9 +134,15 @@ async function categorize(input: string): Promise<ClaudeItem> {
     };
   }
 
+  // 2. Open Food Facts catalog (~3800 Finnish branded products)
+  const catalogHit = lookupCatalog(input);
+  if (catalogHit) {
+    return catalogHit;
+  }
+
+  // 3. Claude for the long tail, with FSOB rikssvenska -> FI-SV correction
   const fromClaude = await categorizeWithClaude(input);
 
-  // FSOB post-correction: rikssvenska canonical_sv -> Finland-Swedish.
   const correctedSv = toFinlandSwedish(fromClaude.canonical_sv);
   let correctedFi = fromClaude.canonical_fi;
   if (correctedSv !== fromClaude.canonical_sv) {
@@ -142,11 +150,6 @@ async function categorize(input: string): Promise<ClaudeItem> {
     if (knownFi) correctedFi = knownFi;
   }
 
-  // Default-unit override for meat/fish: in Finnish supermarkets these are
-  // sold in vacuum packs. If the user didn't specify a weight (g/kg/ml/l),
-  // the parser strips numeric prefixes BEFORE calling categorize, so any
-  // weight intent is captured at the parser stage as an explicit unit on
-  // the parsed item. Here we just ensure Claude's default unit isn't kg.
   let unit = fromClaude.unit;
   let default_qty = fromClaude.default_qty;
   if (

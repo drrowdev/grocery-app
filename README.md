@@ -17,6 +17,7 @@ A bilingual (Finnish / Swedish) smart shopping list PWA that:
 - **Anthropic Claude Haiku 4.5** — categorization, NL parsing, seasonality
 - **Vercel** — hosting (Hobby tier, auto-deploys from `main`)
 - **[FSOB](https://kotus.fi/sanakirjat/muita-sanakirjoja/finlandssvensk-ordbok)** — Finlandssvensk ordbok by Institutet för de inhemska språken (Kotus), CC BY 4.0. Bundled at build time to keep our Finland-Swedish output correct.
+- **[Open Food Facts](https://world.openfoodfacts.org)** — Finnish products from Open Food Facts, CC BY-SA 4.0. ~3800 brand-name products bundled to catch long-tail items (Oltermanni, Ruispalat, Puikula, Jaffa, …) without hitting Claude.
 
 ## Local development
 
