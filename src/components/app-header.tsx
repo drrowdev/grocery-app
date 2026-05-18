@@ -3,13 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  History,
-  LogOut,
-  Tags,
-  Users,
-} from "lucide-react";
+import { ArrowLeft, History, LogOut, Users } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { ActionMenu } from "@/components/action-menu";
@@ -40,7 +34,6 @@ export function AppHeader({
     router.prefetch("/list");
     router.prefetch("/household");
     router.prefetch("/history");
-    router.prefetch("/items");
   }, [router]);
 
   return (
@@ -74,11 +67,6 @@ export function AppHeader({
               label: t("myList"),
               icon: <span className="text-base">🛒</span>,
               onClick: () => router.push("/list"),
-            },
-            {
-              label: t("catalog"),
-              icon: <Tags className="h-4 w-4" />,
-              onClick: () => router.push("/items"),
             },
             {
               label: t("household"),
