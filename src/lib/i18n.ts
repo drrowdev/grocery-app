@@ -47,12 +47,12 @@ const dict = {
     sv: "Välkommen till inköpslistan",
   },
   signInSubtitle: {
-    fi: "Saat kertakäyttöisen kirjautumislinkin sähköpostiisi.",
-    sv: "Du får en engångs-inloggningslänk till din e-post.",
+    fi: "Lähetämme sinulle kirjautumislinkin sähköpostiin.",
+    sv: "Vi skickar dig en engångslänk per e-post.",
   },
   signInSubtitleCode: {
-    fi: "Lähetämme sinulle 6-numeroisen kirjautumiskoodin.",
-    sv: "Vi skickar dig en 6-siffrig inloggningskod.",
+    fi: "Lähetämme sinulle 6-numeroisen koodin.",
+    sv: "Vi skickar dig en 6-siffrig kod.",
   },
   sendCode: { fi: "Lähetä koodi", sv: "Skicka kod" },
   codeSentTitle: { fi: "Anna koodi", sv: "Ange koden" },
@@ -114,25 +114,25 @@ const dict = {
     fi: "Ehdotukset perustuvat ostohistoriaasi.",
     sv: "Förslag baseras på din inköpshistorik.",
   },
-  aiModeActive: { fi: "Aika ostaa", sv: "Dags att handla" },
-  aiModeWatching: { fi: "Tarkkailussa", sv: "Övervakar" },
-  aiModeLearning: { fi: "Opettelee tapoja", sv: "Lär sig vanor" },
-  aiModeIdle: { fi: "Seurannassa", sv: "Lyssnar" },
+  aiModeActive: { fi: "Aika täydentää", sv: "Dags att handla" },
+  aiModeWatching: { fi: "Tunnen rytmisi", sv: "Håller koll" },
+  aiModeLearning: { fi: "Opettelen tapojasi", sv: "Lär mig dina vanor" },
+  aiModeIdle: { fi: "Valmiina kuuntelemaan", sv: "Lyssnar" },
   aiSubActive: {
-    fi: "Nämä loppuvat luultavasti pian.",
-    sv: "Dessa tar troligen slut snart.",
+    fi: "Nämä taitavat olla loppumassa.",
+    sv: "De här lär vara på slutet.",
   },
   aiSubWatching: {
-    fi: "Seuraa {n} toistuvaa tuotetta. Ei vielä ostotarvetta.",
-    sv: "Följer {n} återkommande varor. Inget att köpa ännu.",
+    fi: "Seuraan jo ostorytmiäsi. Ei ostettavaa juuri nyt.",
+    sv: "Jag följer redan din inköpsrytm. Inget att köpa just nu.",
   },
   aiSubLearning: {
-    fi: "Oppii {n} tuotteen rytmiä. Tarvitsee lisää ostoja.",
-    sv: "Lär sig rytmen för {n} varor. Behöver fler inköp.",
+    fi: "Vielä muutama osto, niin alan ehdottaa.",
+    sv: "Några inköp till så börjar jag ge förslag.",
   },
   aiSubIdle: {
-    fi: "Merkitse ostot rastittamalla niitä, niin opin tavat.",
-    sv: "Bocka av varor när du köper, så lär jag mig vanorna.",
+    fi: "Rastita tuotteet sitä mukaa kun hankit ne — niin opin tavat.",
+    sv: "Bocka av varorna när du köpt dem — då lär jag mig dina vanor.",
   },
   rename: { fi: "Nimeä uudelleen", sv: "Byt namn" },
   deleteListConfirm: {
@@ -145,8 +145,8 @@ const dict = {
     sv: "Skapa ditt första hushåll",
   },
   createHouseholdSubtitle: {
-    fi: "Talous kerää ostoksesi ja jakaa listat valitsemiesi henkilöiden kanssa.",
-    sv: "Hushållet samlar dina inköp och delar listor med personer du väljer.",
+    fi: "Talouteen kerätään ostoksesi ja sen listat näkyvät niille, jotka kutsut mukaan.",
+    sv: "I hushållet samlas dina inköp och listorna delas med dem du bjuder in.",
   },
   householdNameLabel: { fi: "Talouden nimi", sv: "Hushållets namn" },
   householdNamePlaceholder: {
@@ -175,8 +175,8 @@ const dict = {
     sv: "t.ex. mjölk eller 500g köttfärs",
   },
   addItemHint: {
-    fi: "Tekoäly tunnistaa tuotteen ja luokittelee sen automaattisesti.",
-    sv: "AI känner igen varan och kategoriserar den automatiskt.",
+    fi: "Tekoäly tunnistaa tuotteen ja lajittelee sen oikeaan kategoriaan.",
+    sv: "AI känner igen varan och sorterar in den i rätt kategori.",
   },
   add: { fi: "Lisää", sv: "Lägg till" },
   itemAdded: { fi: "Lisätty", sv: "Tillagd" },
@@ -201,8 +201,8 @@ const dict = {
     sv: "Ta bort markerade ({n})",
   },
   quickAddHint: {
-    fi: "Useita tuotteita kerralla — pilkulla erotettuna. Käytä mikkiä myös puheella.",
-    sv: "Flera varor på en gång — separera med komma. Mikrofonen funkar också.",
+    fi: "Lisää monta kerralla pilkulla erotettuna — tai sanele mikrofonilla.",
+    sv: "Lägg till flera på en gång med komma — eller diktera med mikrofonen.",
   },
   listEmpty: {
     fi: "Lista on tyhjä. Lisää tuotteita yllä olevasta kentästä.",
@@ -255,8 +255,8 @@ const dict = {
   inviteTitle: { fi: "Kutsu jäsen", sv: "Bjud in medlem" },
   invite: { fi: "Kutsu", sv: "Bjud in" },
   inviteHint: {
-    fi: "Kutsuttu liittyy talouteen automaattisesti, kun hän kirjautuu samalla sähköpostiosoitteella.",
-    sv: "Den inbjudna ansluter automatiskt när hen loggar in med samma e-postadress.",
+    fi: "Kutsuttu liittyy talouteen automaattisesti, kun hän kirjautuu sisään samalla sähköpostilla.",
+    sv: "Personen ansluter automatiskt till hushållet när hen loggar in med samma e-postadress.",
   },
   inviteSent: { fi: "Kutsu lähetetty: {email}", sv: "Inbjudan skickad: {email}" },
   alreadyMember: { fi: "Käyttäjä on jo jäsen.", sv: "Användaren är redan medlem." },
