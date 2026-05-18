@@ -1,6 +1,6 @@
 export type Lang = "fi" | "sv";
 
-export const DEFAULT_LANG: Lang = "fi";
+export const DEFAULT_LANG: Lang = "sv";
 
 type Dict = Record<string, { fi: string; sv: string }>;
 
