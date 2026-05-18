@@ -34,7 +34,7 @@ export function ListRail({
   }, []);
 
   return (
-    <aside className="hidden md:flex flex-col w-52 shrink-0 sticky top-5 self-start max-h-[calc(100dvh-2.5rem)] overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <aside className="hidden md:flex flex-col w-52 shrink-0 self-start rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
         {t("listsLabel")}
       </p>
