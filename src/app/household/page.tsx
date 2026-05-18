@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentHousehold } from "@/lib/household";
+import { backfillMyProfile } from "@/app/household/actions";
 import { HouseholdView } from "@/components/household-view";
 
 export const dynamic = "force-dynamic";
@@ -30,22 +31,46 @@ export default async function HouseholdPage() {
   // Only owners can access this page
   if (household.role !== "owner") redirect("/list");
 
+  // Make sure profile rows exist for the current user (early signups
+  // might have skipped the trigger).
+  await backfillMyProfile();
+
+  // Fetch members and profiles separately to avoid an inner-join filter
+  // when a member's profile row hasn't been backfilled.
   const { data: members } = await supabase
     .from("household_members")
-    .select("user_id, role, profile:profiles(email, display_name)")
+    .select("user_id, role")
     .eq("household_id", household.id)
     .order("joined_at");
 
-  const memberRows: MemberRow[] = ((members ?? []) as unknown as {
-    user_id: string;
-    role: "owner" | "member";
-    profile: { email: string | null; display_name: string | null } | null;
-  }[]).map((m) => ({
-    user_id: m.user_id,
-    role: m.role,
-    email: m.profile?.email ?? null,
-    display_name: m.profile?.display_name ?? null,
-  }));
+  const userIds = (members ?? []).map((m) => m.user_id as string);
+  const { data: profiles } = userIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, email, display_name")
+        .in("id", userIds)
+    : { data: [] };
+
+  const profileMap = new Map<
+    string,
+    { email: string | null; display_name: string | null }
+  >();
+  for (const p of profiles ?? []) {
+    profileMap.set(p.id as string, {
+      email: (p.email as string | null) ?? null,
+      display_name: (p.display_name as string | null) ?? null,
+    });
+  }
+
+  const memberRows: MemberRow[] = (members ?? []).map((m) => {
+    const p = profileMap.get(m.user_id as string);
+    return {
+      user_id: m.user_id as string,
+      role: m.role as "owner" | "member",
+      email: p?.email ?? null,
+      display_name: p?.display_name ?? null,
+    };
+  });
 
   const isOwner =
     memberRows.find((m) => m.user_id === user.id)?.role === "owner";

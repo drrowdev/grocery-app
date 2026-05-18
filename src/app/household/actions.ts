@@ -3,6 +3,31 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * If profile rows are missing for current users (e.g. signups before the
+ * profiles trigger was installed), backfill them so display works.
+ */
+export async function backfillMyProfile() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("profiles")
+    .upsert(
+      {
+        id: user.id,
+        email: user.email,
+        display_name:
+          (user.user_metadata?.display_name as string | undefined) ??
+          (user.email ? user.email.split("@")[0] : null),
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
+}
+
 export async function inviteToHousehold(
   householdId: string,
   email: string,
