@@ -50,5 +50,11 @@ export default async function HistoryPage() {
     items: r.list_items ?? [],
   }));
 
-  return <HistoryView householdName={household.name} lists={rows} />;
+  return (
+    <HistoryView
+      householdName={household.name}
+      isOwner={household.role === "owner"}
+      lists={rows}
+    />
+  );
 }

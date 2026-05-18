@@ -24,7 +24,8 @@ import {
   toggleListItem,
   updateListItem,
 } from "@/app/list/actions";
-import type { ListItemRow, QuickSuggestion } from "@/app/list/page";
+import type { ListItemRow, ListSummary, QuickSuggestion } from "@/app/list/page";
+import { ListPicker } from "@/components/list-picker";
 
 const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
@@ -42,12 +43,18 @@ function formatQty(n: number): string {
 
 export function ListView({
   householdName,
-  listId,
+  isOwner,
+  lists,
+  currentListId,
+  currentListName,
   initialItems,
   initialSuggestions,
 }: {
   householdName: string;
-  listId: string;
+  isOwner: boolean;
+  lists: ListSummary[];
+  currentListId: string;
+  currentListName: string;
   initialItems: ListItemRow[];
   initialSuggestions: QuickSuggestion[];
 }) {
@@ -57,6 +64,7 @@ export function ListView({
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const inputRef = useRef<HTMLInputElement>(null);
+  const listId = currentListId;
 
   const onListIds = useMemo(
     () => new Set(items.map((r) => r.item.id)),
@@ -253,7 +261,15 @@ export function ListView({
     <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
       <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
         <AppHeader
-          title={householdName}
+          title={
+            <ListPicker
+              currentId={currentListId}
+              currentName={currentListName}
+              lists={lists}
+            />
+          }
+          subtitle={householdName}
+          isOwner={isOwner}
           rightExtra={
             <span className="text-sm tabular-nums text-zinc-500">
               {checkedCount}/{totalCount}

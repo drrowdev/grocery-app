@@ -20,11 +20,13 @@ export function AppHeader({
   subtitle,
   backHref,
   rightExtra,
+  isOwner = false,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: ReactNode;
   backHref?: string;
   rightExtra?: ReactNode;
+  isOwner?: boolean;
 }) {
   const router = useRouter();
   const { t } = useLang();
@@ -32,9 +34,35 @@ export function AppHeader({
   // Prefetch sibling routes so navigation feels instant
   useEffect(() => {
     router.prefetch("/list");
-    router.prefetch("/household");
+    if (isOwner) router.prefetch("/household");
     router.prefetch("/history");
-  }, [router]);
+  }, [router, isOwner]);
+
+  const menuItems = [
+    {
+      label: t("myList"),
+      icon: <span className="text-base">🛒</span>,
+      onClick: () => router.push("/list"),
+    },
+    {
+      label: t("history"),
+      icon: <History className="h-4 w-4" />,
+      onClick: () => router.push("/history"),
+    },
+  ];
+  if (isOwner) {
+    menuItems.push({
+      label: t("household"),
+      icon: <Users className="h-4 w-4" />,
+      onClick: () => router.push("/household"),
+    });
+  }
+  menuItems.push({
+    label: t("signOut"),
+    icon: <LogOut className="h-4 w-4" />,
+    onClick: () => void signOut(),
+    danger: true,
+  } as (typeof menuItems)[number] & { danger?: boolean });
 
   return (
     <div className="flex items-start justify-between gap-3 mb-4">
@@ -50,9 +78,13 @@ export function AppHeader({
           </Link>
         )}
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
-            {title}
-          </h1>
+          {typeof title === "string" ? (
+            <h1 className="text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
+              {title}
+            </h1>
+          ) : (
+            title
+          )}
           {subtitle && (
             <p className="text-xs text-zinc-500 truncate mt-0.5">{subtitle}</p>
           )}
@@ -61,31 +93,7 @@ export function AppHeader({
       <div className="flex items-center gap-2 shrink-0 mt-1">
         {rightExtra}
         <LangToggle />
-        <ActionMenu
-          items={[
-            {
-              label: t("myList"),
-              icon: <span className="text-base">🛒</span>,
-              onClick: () => router.push("/list"),
-            },
-            {
-              label: t("household"),
-              icon: <Users className="h-4 w-4" />,
-              onClick: () => router.push("/household"),
-            },
-            {
-              label: t("history"),
-              icon: <History className="h-4 w-4" />,
-              onClick: () => router.push("/history"),
-            },
-            {
-              label: t("signOut"),
-              icon: <LogOut className="h-4 w-4" />,
-              onClick: () => void signOut(),
-              danger: true,
-            },
-          ]}
-        />
+        <ActionMenu items={menuItems} />
       </div>
     </div>
   );

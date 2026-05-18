@@ -27,6 +27,8 @@ export default async function HouseholdPage() {
 
   const household = await getCurrentHousehold();
   if (!household) redirect("/");
+  // Only owners can access this page
+  if (household.role !== "owner") redirect("/list");
 
   const { data: members } = await supabase
     .from("household_members")

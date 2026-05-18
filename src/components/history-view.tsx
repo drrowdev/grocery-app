@@ -24,9 +24,11 @@ function formatDate(iso: string | null, lang: "fi" | "sv"): string {
 
 export function HistoryView({
   householdName,
+  isOwner,
   lists,
 }: {
   householdName: string;
+  isOwner: boolean;
   lists: HistoryList[];
 }) {
   const router = useRouter();
@@ -40,6 +42,7 @@ export function HistoryView({
           title={t("history")}
           subtitle={householdName}
           backHref="/list"
+          isOwner={isOwner}
         />
         {lists.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50">

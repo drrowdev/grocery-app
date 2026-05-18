@@ -292,12 +292,16 @@ export async function completeList(listId: string) {
   return removeCheckedItems(listId);
 }
 
-export async function addSuggested(itemId: string) {
+export async function addSuggested(itemId: string, listId?: string) {
   const household = await getCurrentHousehold();
   if (!household) return;
 
   const supabase = await createClient();
-  const list = await getOrCreateActiveList(household.id);
+  let targetListId = listId;
+  if (!targetListId) {
+    const list = await getOrCreateActiveList(household.id);
+    targetListId = list.id;
+  }
 
   const { data: profile } = await supabase
     .from("consumption_profiles")
@@ -325,7 +329,7 @@ export async function addSuggested(itemId: string) {
     .from("list_items")
     .upsert(
       {
-        list_id: list.id,
+        list_id: targetListId,
         item_id: itemId,
         qty,
         unit: item.unit,
@@ -335,5 +339,49 @@ export async function addSuggested(itemId: string) {
     );
 
   revalidatePath("/list");
-  revalidatePath("/");
+}
+
+/**
+ * Create a new shopping list within the current household.
+ */
+export async function createList(
+  name: string,
+): Promise<{ ok: true; id: string } | { ok: false; message: string }> {
+  const household = await getCurrentHousehold();
+  if (!household) return { ok: false, message: "no_household" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const cleaned = name.trim() || "Lista";
+  const { data, error } = await supabase
+    .from("shopping_lists")
+    .insert({
+      household_id: household.id,
+      name: cleaned,
+      status: "active",
+      created_by: user?.id,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/list");
+  return { ok: true, id: data.id };
+}
+
+export async function renameList(id: string, name: string) {
+  const cleaned = name.trim();
+  if (!cleaned) return;
+  const supabase = await createClient();
+  await supabase.from("shopping_lists").update({ name: cleaned }).eq("id", id);
+  revalidatePath("/list");
+}
+
+export async function deleteList(id: string) {
+  const supabase = await createClient();
+  await supabase.from("shopping_lists").delete().eq("id", id);
+  revalidatePath("/list");
 }

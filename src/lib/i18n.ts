@@ -101,6 +101,16 @@ const dict = {
     fi: "Usein ostettuja",
     sv: "Köps ofta",
   },
+  newList: { fi: "Uusi lista", sv: "Ny lista" },
+  newListPlaceholder: {
+    fi: "Listan nimi…",
+    sv: "Listans namn…",
+  },
+  rename: { fi: "Nimeä uudelleen", sv: "Byt namn" },
+  deleteListConfirm: {
+    fi: "Poistetaanko lista \"{name}\" ja sen tuotteet?",
+    sv: "Ta bort listan \"{name}\" och dess varor?",
+  },
   // Households
   createHouseholdTitle: {
     fi: "Luo ensimmäinen taloutesi",

@@ -42,7 +42,19 @@ export type QuickSuggestion = {
   } | null;
 };
 
-export default async function ListPage() {
+export type ListSummary = {
+  id: string;
+  name: string;
+  itemCount: number;
+};
+
+export default async function ListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
+  const { id: requestedId } = await searchParams;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -52,28 +64,54 @@ export default async function ListPage() {
   const household = await getCurrentHousehold();
   if (!household) redirect("/");
 
+  // Fetch all active lists for this household + their item counts
+  const { data: allListsRaw } = await supabase
+    .from("shopping_lists")
+    .select("id, name, status, created_at, list_items(id)")
+    .eq("household_id", household.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+
+  type ListRow = {
+    id: string;
+    name: string;
+    status: string;
+    created_at: string;
+    list_items: { id: string }[] | null;
+  };
+  let allLists = ((allListsRaw ?? []) as unknown as ListRow[]).map((l) => ({
+    id: l.id,
+    name: l.name,
+    itemCount: l.list_items?.length ?? 0,
+  })) as ListSummary[];
+
+  // If no lists yet, lazily create one
+  if (allLists.length === 0) {
+    const created = await getOrCreateActiveList(household.id);
+    allLists = [{ id: created.id, name: created.name, itemCount: 0 }];
+  }
+
+  // Pick which list to show: query param if provided + valid, else first
+  const selected =
+    (requestedId && allLists.find((l) => l.id === requestedId)) ||
+    allLists[0];
+
   let errorDetail: string | null = null;
-  let listId: string | null = null;
   let rows: ListItemRow[] = [];
   let quickSuggestions: QuickSuggestion[] = [];
 
   try {
-    const list = await getOrCreateActiveList(household.id);
-    listId = list.id;
-
     const { data, error } = await supabase
       .from("list_items")
       .select(
         "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))",
       )
-      .eq("list_id", list.id)
+      .eq("list_id", selected.id)
       .order("added_at");
 
     if (error) throw error;
     rows = (data ?? []) as unknown as ListItemRow[];
 
-    // Quick-add chip strip: most-used items from the household catalog,
-    // excluding those already on the active list.
     const onListIds = new Set(rows.map((r) => r.item.id));
     const { data: catalogRaw } = await supabase
       .from("items")
@@ -130,21 +168,21 @@ export default async function ListPage() {
     console.error("ListPage error:", e);
   }
 
-  if (errorDetail || !listId) {
+  if (errorDetail) {
     return (
-      <div className="flex flex-col flex-1 min-h-dvh items-center justify-center p-6 bg-gradient-to-b from-emerald-50 to-white dark:from-zinc-950 dark:to-black">
+      <div className="flex flex-col flex-1 min-h-dvh items-center justify-center p-6 bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-md rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/30">
           <h2 className="text-sm font-semibold text-rose-900 dark:text-rose-200">
             Could not load list
           </h2>
           <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-rose-800 dark:text-rose-300">
-            {errorDetail ?? "Unknown error"}
+            {errorDetail}
           </pre>
           <Link
             href="/"
             className="mt-4 inline-block rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700"
           >
-            Back to home
+            Back
           </Link>
         </div>
       </div>
@@ -154,7 +192,10 @@ export default async function ListPage() {
   return (
     <ListView
       householdName={household.name}
-      listId={listId}
+      isOwner={household.role === "owner"}
+      lists={allLists}
+      currentListId={selected.id}
+      currentListName={selected.name}
       initialItems={rows}
       initialSuggestions={quickSuggestions}
     />

@@ -42,6 +42,7 @@ export function HouseholdView({
           title={t("household")}
           subtitle={householdName}
           backHref="/list"
+          isOwner={isOwner}
         />
         {isOwner && (
           <section>
