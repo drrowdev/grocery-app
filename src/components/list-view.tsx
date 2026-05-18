@@ -254,7 +254,7 @@ export function ListView({
     return grouped.filter(([key]) => key === filter);
   }, [grouped, filter]);
 
-  const [completedOpen, setCompletedOpen] = useState(true);
+  const [completedOpen, setCompletedOpen] = useState(false);
 
   async function submitQuickAdd(text: string) {
     const trimmed = text.trim();
@@ -489,11 +489,6 @@ export function ListView({
             </span>
           }
           isOwner={isOwner}
-          rightExtra={
-            <span className="text-sm tabular-nums text-zinc-500">
-              {checkedCount}/{totalCount}
-            </span>
-          }
         />
       </div>
       <div className="flex-1 px-4 pb-5 mx-auto w-full max-w-5xl flex gap-4">
@@ -669,7 +664,7 @@ export function ListView({
             <button
               type="button"
               onClick={() => setCompletedOpen((v) => !v)}
-              className="mb-2 flex w-full items-center gap-2 text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              className="mb-2 flex w-full items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
             >
               <span
                 className={`transition-transform ${completedOpen ? "rotate-90" : ""}`}
