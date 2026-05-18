@@ -170,9 +170,10 @@ export function ListView({
   }
 
   // Synchronous optimistic merge for typed input. Returns true if a match
-  // was found and the local state was updated, false otherwise. Called
-  // OUTSIDE the React transition so the bump renders on the next frame
-  // instead of waiting for the server action to finish.
+  // was found and the local state was updated, false otherwise. Match is
+  // intentionally strict: same canonical name after normalising case +
+  // collapsing whitespace. Modifiers like '10%' vs '17%' must NOT collide
+  // because the user wants separate line items per fat-percentage variant.
   function applyOptimisticMerge(text: string): boolean {
     const trimmed = text.trim();
     if (!trimmed) return false;
@@ -184,14 +185,8 @@ export function ListView({
       : null;
     const rest = qtyMatch ? qtyMatch[2] : trimmed;
 
-    // Normalise: lowercase + strip percentage modifiers + collapse spaces.
-    // "10% maletkött" → "maletkött", "Malet kött 10%" → "malet kött".
     function normalise(s: string): string {
-      return s
-        .toLowerCase()
-        .replace(/\d+[,.]?\d*\s*%/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+      return s.toLowerCase().replace(/\s+/g, " ").trim();
     }
 
     const needle = normalise(rest);
@@ -200,12 +195,7 @@ export function ListView({
     const candidate = items.find((r) => {
       const fi = normalise(r.item.canonical_fi);
       const sv = normalise(r.item.canonical_sv);
-      if (fi === needle || sv === needle) return true;
-      // Substring match in either direction so "10% malet kött" matches
-      // an existing "Malet kött" item and vice versa.
-      if (fi && (fi.includes(needle) || needle.includes(fi))) return true;
-      if (sv && (sv.includes(needle) || needle.includes(sv))) return true;
-      return false;
+      return fi === needle || sv === needle;
     });
     if (!candidate) return false;
 
