@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Plus, X } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
@@ -21,6 +22,13 @@ export function ListRail({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [pending, startTransition] = useTransition();
+
+  // Prefetch every list so taps switch instantly
+  useEffect(() => {
+    for (const list of lists) {
+      if (list.id !== currentId) router.prefetch(`/list?id=${list.id}`);
+    }
+  }, [lists, currentId, router]);
 
   useEffect(() => {
     function onEsc(e: KeyboardEvent) {
@@ -91,12 +99,11 @@ export function ListRail({
 
           return (
             <li key={list.id} className="group relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isCurrent) router.push(`/list?id=${list.id}`);
-                }}
-                onDoubleClick={() => {
+              <Link
+                href={`/list?id=${list.id}`}
+                prefetch
+                onDoubleClick={(e) => {
+                  e.preventDefault();
                   setRenameDraft(list.name);
                   setRenamingId(list.id);
                 }}
@@ -122,7 +129,7 @@ export function ListRail({
                     {list.itemCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Hover-revealed actions */}
               <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden gap-0.5 group-hover:flex">
