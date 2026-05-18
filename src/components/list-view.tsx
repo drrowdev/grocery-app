@@ -226,6 +226,12 @@ export function ListView({
     if (items.some((r) => r.item.id === opts.item_id)) return;
 
     buzz(15);
+    setError(null);
+    setToast(
+      `${t("itemAdded")}: ${capitalizeFirst(
+        lang === "fi" ? opts.canonical_fi : opts.canonical_sv,
+      )}`,
+    );
     const tempId = nextTempId();
     const optimisticRow: ListItemRow = {
       id: tempId,
@@ -254,6 +260,7 @@ export function ListView({
         // Roll back if the write failed
         setItems((prev) => prev.filter((r) => r.id !== tempId));
         setError(`${t("errorGeneric")} (${error.message})`);
+        setToast(null);
         return;
       }
       // Re-fetch to replace the temp row with the persisted one (gets real id, etc.)
