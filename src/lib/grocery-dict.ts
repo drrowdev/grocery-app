@@ -26,12 +26,15 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["maito", "maitoa", "mjölk", "milk", "kulutusmaito", "lättmjölk"] },
   // Finland milk colour codes — explicit entries so the fat level / colour
   // modifier never gets stripped.
+  //   Red    = täysmaito (full fat, ~3.5%)
+  //   Blue   = kevytmaito (low fat, ~1.5%)
+  //   Light blue (vaaleansininen / ljusblå) = rasvaton (fat-free)
   { fi: "täysmaito", sv: "röd mjölk", category: "dairy", unit: "l", default_qty: 1,
     aliases: ["täysmaito", "täysmaitoa", "röd mjölk", "röd-mjölk", "rödmjölk", "punainen maito", "full milk", "whole milk"] },
-  { fi: "kevytmaito", sv: "lätt mjölk", category: "dairy", unit: "l", default_qty: 1,
-    aliases: ["kevytmaito", "kevytmaitoa", "lätt mjölk", "lättmjölk", "blå mjölk", "blåmjölk", "sininen maito", "kevyt maito"] },
+  { fi: "kevytmaito", sv: "blå mjölk", category: "dairy", unit: "l", default_qty: 1,
+    aliases: ["kevytmaito", "kevytmaitoa", "blå mjölk", "blåmjölk", "sininen maito", "kevyt maito", "lätt mjölk", "lättmjölk"] },
   { fi: "rasvaton maito", sv: "fettfri mjölk", category: "dairy", unit: "l", default_qty: 1,
-    aliases: ["rasvaton maito", "rasvatonta maitoa", "fettfri mjölk", "fettfri-mjölk", "grön mjölk", "grönmjölk", "vihreä maito", "skimmed milk", "rasvaton"] },
+    aliases: ["rasvaton maito", "rasvatonta maitoa", "fettfri mjölk", "fettfri-mjölk", "ljusblå mjölk", "ljusblåmjölk", "vaaleansininen maito", "skimmed milk", "rasvaton"] },
   { fi: "kerma", sv: "grädde", category: "dairy", unit: "dl", default_qty: 2,
     aliases: ["kerma", "kermaa", "grädde", "cream", "kuohukerma", "vispgrädde"] },
   { fi: "ranskankerma", sv: "crème fraîche", category: "dairy", unit: "pkt", default_qty: 1,
