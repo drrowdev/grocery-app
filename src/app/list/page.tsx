@@ -191,7 +191,6 @@ export default async function ListPage({
 
   return (
     <ListView
-      householdName={household.name}
       isOwner={household.role === "owner"}
       lists={allLists}
       currentListId={selected.id}

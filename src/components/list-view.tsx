@@ -42,7 +42,6 @@ function formatQty(n: number): string {
 }
 
 export function ListView({
-  householdName,
   isOwner,
   lists,
   currentListId,
@@ -50,7 +49,6 @@ export function ListView({
   initialItems,
   initialSuggestions,
 }: {
-  householdName: string;
   isOwner: boolean;
   lists: ListSummary[];
   currentListId: string;
@@ -268,7 +266,6 @@ export function ListView({
               lists={lists}
             />
           }
-          subtitle={householdName}
           isOwner={isOwner}
           rightExtra={
             <span className="text-sm tabular-nums text-zinc-500">

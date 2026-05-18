@@ -107,3 +107,22 @@ export async function leaveHousehold(householdId: string) {
     .eq("user_id", user.id);
   revalidatePath("/");
 }
+
+export async function renameHousehold(
+  householdId: string,
+  name: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const cleaned = name.trim();
+  if (!cleaned) return { ok: false, message: "empty_name" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("households")
+    .update({ name: cleaned })
+    .eq("id", householdId);
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/household");
+  revalidatePath("/list");
+  return { ok: true };
+}

@@ -23,11 +23,9 @@ function formatDate(iso: string | null, lang: "fi" | "sv"): string {
 }
 
 export function HistoryView({
-  householdName,
   isOwner,
   lists,
 }: {
-  householdName: string;
   isOwner: boolean;
   lists: HistoryList[];
 }) {
@@ -40,7 +38,6 @@ export function HistoryView({
       <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
         <AppHeader
           title={t("history")}
-          subtitle={householdName}
           backHref="/list"
           isOwner={isOwner}
         />

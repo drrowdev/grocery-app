@@ -52,7 +52,6 @@ export default async function HistoryPage() {
 
   return (
     <HistoryView
-      householdName={household.name}
       isOwner={household.role === "owner"}
       lists={rows}
     />

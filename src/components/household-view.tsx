@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Crown, Loader2, LogOut, Mail, UserPlus, X } from "lucide-react";
+import { Check, Crown, Loader2, LogOut, Mail, Pencil, UserPlus, X } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { AppHeader } from "@/components/app-header";
 import {
   inviteToHousehold,
   leaveHousehold,
   removeMember,
+  renameHousehold,
   revokeInvitation,
 } from "@/app/household/actions";
 import type { InvitationRow, MemberRow } from "@/app/household/page";
@@ -34,16 +35,95 @@ export function HouseholdView({
     text: string;
   } | null>(null);
   const [emailDraft, setEmailDraft] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(householdName);
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
       <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl space-y-6">
         <AppHeader
           title={t("household")}
-          subtitle={householdName}
           backHref="/list"
           isOwner={isOwner}
         />
+
+        {/* Household name (editable for owner) */}
+        <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">
+            {t("householdNameLabel")}
+          </p>
+          {editingName && isOwner ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                autoFocus
+                maxLength={60}
+                className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    startTransition(async () => {
+                      await renameHousehold(householdId, nameDraft);
+                      setEditingName(false);
+                    });
+                  } else if (e.key === "Escape") {
+                    setNameDraft(householdName);
+                    setEditingName(false);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                disabled={pending || !nameDraft.trim()}
+                onClick={() =>
+                  startTransition(async () => {
+                    await renameHousehold(householdId, nameDraft);
+                    setEditingName(false);
+                  })
+                }
+                className="rounded-md bg-emerald-600 p-2 text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                aria-label={t("save")}
+              >
+                {pending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNameDraft(householdName);
+                  setEditingName(false);
+                }}
+                className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                aria-label={t("cancel")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 truncate">
+                {householdName}
+              </p>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNameDraft(householdName);
+                    setEditingName(true);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                >
+                  <Pencil className="h-3 w-3" />
+                  {t("rename")}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
         {isOwner && (
           <section>
             <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
