@@ -19,11 +19,35 @@ export type AiSuggestion = {
   last_purchased_at: string | null;
 };
 
+export type AiStatus = {
+  tracked: number;
+  recurring: number;
+  dueNow: number;
+};
+
+type Mode = "active" | "watching" | "learning" | "idle";
+
+function modeFor(status: AiStatus, visibleCount: number): Mode {
+  if (visibleCount > 0) return "active";
+  if (status.recurring > 0) return "watching";
+  if (status.tracked > 0) return "learning";
+  return "idle";
+}
+
+const DOT_COLORS: Record<Mode, string> = {
+  active: "bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.18)]",
+  watching: "bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.18)]",
+  learning: "bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.18)]",
+  idle: "bg-zinc-400 shadow-[0_0_0_4px_rgba(161,161,170,0.18)]",
+};
+
 export function AiSuggestionCard({
   suggestions,
+  status,
   currentListId,
 }: {
   suggestions: AiSuggestion[];
+  status: AiStatus;
   currentListId: string;
 }) {
   const router = useRouter();
@@ -33,7 +57,7 @@ export function AiSuggestionCard({
   const [pending, startTransition] = useTransition();
 
   const visible = suggestions.filter((s) => !dismissed.has(s.item_id));
-  if (visible.length === 0) return null;
+  const mode = modeFor(status, visible.length);
 
   async function handleAdd(s: AiSuggestion) {
     setAdding((prev) => new Set(prev).add(s.item_id));
@@ -55,55 +79,79 @@ export function AiSuggestionCard({
     });
   }
 
+  const headline =
+    mode === "active"
+      ? t("aiModeActive")
+      : mode === "watching"
+        ? t("aiModeWatching")
+        : mode === "learning"
+          ? t("aiModeLearning")
+          : t("aiModeIdle");
+
+  const subline =
+    mode === "active"
+      ? t("aiSubActive")
+      : mode === "watching"
+        ? t("aiSubWatching", { n: status.recurring })
+        : mode === "learning"
+          ? t("aiSubLearning", { n: status.tracked })
+          : t("aiSubIdle");
+
   return (
-    <aside className="hidden md:block mt-4 w-52 shrink-0">
+    <aside className="mt-4 w-full">
       <div className="relative overflow-hidden rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-violet-50 p-3 shadow-sm dark:border-emerald-900/40 dark:from-emerald-950/40 dark:via-zinc-900 dark:to-violet-950/30">
-        {/* Subtle shimmer */}
         <div
-          className="pointer-events-none absolute inset-0 -inset-y-2 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.10),transparent_60%),radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.10),transparent_60%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.10),transparent_60%),radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.10),transparent_60%)]"
           aria-hidden="true"
         />
         <div className="relative">
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${DOT_COLORS[mode]} animate-pulse`}
+              aria-hidden
+            />
             <Sparkles
-              className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 animate-pulse"
+              className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
               aria-hidden
             />
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-              {t("aiSuggests")}
+              {headline}
             </h3>
           </div>
-          <ul className="flex flex-col gap-0.5">
-            {visible.map((s) => {
-              const label =
-                lang === "fi" ? s.canonical_fi : s.canonical_sv;
-              const emoji = getItemEmoji(s.canonical_fi, s.category_key);
-              const isAdding = adding.has(s.item_id);
-              return (
-                <li key={s.item_id} className="group flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => void handleAdd(s)}
-                    disabled={isAdding || pending}
-                    className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-800 transition hover:bg-white/70 active:scale-[0.98] dark:text-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-50"
-                  >
-                    <span aria-hidden>{emoji}</span>
-                    <span className="flex-1 truncate">
-                      {capitalizeFirst(label)}
-                    </span>
-                    {isAdding ? (
-                      <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
-                    ) : (
-                      <Plus className="h-3 w-3 text-emerald-600 opacity-60 group-hover:opacity-100" />
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-2 text-[10px] text-zinc-500 dark:text-zinc-500">
-            {t("aiSuggestHint")}
+          <p className="mt-1 text-[11px] leading-snug text-zinc-600 dark:text-zinc-400">
+            {subline}
           </p>
+
+          {visible.length > 0 && (
+            <ul className="mt-2 flex flex-col gap-0.5">
+              {visible.map((s) => {
+                const label =
+                  lang === "fi" ? s.canonical_fi : s.canonical_sv;
+                const emoji = getItemEmoji(s.canonical_fi, s.category_key);
+                const isAdding = adding.has(s.item_id);
+                return (
+                  <li key={s.item_id} className="group flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => void handleAdd(s)}
+                      disabled={isAdding || pending}
+                      className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-800 transition hover:bg-white/70 active:scale-[0.98] dark:text-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-50"
+                    >
+                      <span aria-hidden>{emoji}</span>
+                      <span className="flex-1 truncate">
+                        {capitalizeFirst(label)}
+                      </span>
+                      {isAdding ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
+                      ) : (
+                        <Plus className="h-3 w-3 text-emerald-600 opacity-60 group-hover:opacity-100" />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
     </aside>

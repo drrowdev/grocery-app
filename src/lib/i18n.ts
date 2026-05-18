@@ -114,6 +114,26 @@ const dict = {
     fi: "Ehdotukset perustuvat ostohistoriaasi.",
     sv: "Förslag baseras på din inköpshistorik.",
   },
+  aiModeActive: { fi: "Aika ostaa", sv: "Dags att handla" },
+  aiModeWatching: { fi: "Tarkkailussa", sv: "Övervakar" },
+  aiModeLearning: { fi: "Opettelee tapoja", sv: "Lär sig vanor" },
+  aiModeIdle: { fi: "Seurannassa", sv: "Lyssnar" },
+  aiSubActive: {
+    fi: "Nämä loppuvat luultavasti pian.",
+    sv: "Dessa tar troligen slut snart.",
+  },
+  aiSubWatching: {
+    fi: "Seuraa {n} toistuvaa tuotetta. Ei vielä ostotarvetta.",
+    sv: "Följer {n} återkommande varor. Inget att köpa ännu.",
+  },
+  aiSubLearning: {
+    fi: "Oppii {n} tuotteen rytmiä. Tarvitsee lisää ostoja.",
+    sv: "Lär sig rytmen för {n} varor. Behöver fler inköp.",
+  },
+  aiSubIdle: {
+    fi: "Merkitse ostot rastittamalla niitä, niin opin tavat.",
+    sv: "Bocka av varor när du köper, så lär jag mig vanorna.",
+  },
   rename: { fi: "Nimeä uudelleen", sv: "Byt namn" },
   deleteListConfirm: {
     fi: "Poistetaanko lista \"{name}\" ja sen tuotteet?",

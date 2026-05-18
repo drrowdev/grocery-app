@@ -30,6 +30,7 @@ import { ListRail } from "@/components/list-rail";
 import {
   AiSuggestionCard,
   type AiSuggestion,
+  type AiStatus,
 } from "@/components/ai-suggestion-card";
 
 const LIST_ITEM_SELECT =
@@ -55,6 +56,7 @@ export function ListView({
   initialItems,
   initialSuggestions,
   aiSuggestions,
+  aiStatus,
 }: {
   isOwner: boolean;
   lists: ListSummary[];
@@ -64,6 +66,7 @@ export function ListView({
   initialItems: ListItemRow[];
   initialSuggestions: QuickSuggestion[];
   aiSuggestions: AiSuggestion[];
+  aiStatus: AiStatus;
 }) {
   const { lang, t } = useLang();
   const [items, setItems] = useState<ListItemRow[]>(initialItems);
@@ -291,6 +294,7 @@ export function ListView({
           {currentListType === "grocery" && (
             <AiSuggestionCard
               suggestions={aiSuggestions}
+              status={aiStatus}
               currentListId={currentListId}
             />
           )}

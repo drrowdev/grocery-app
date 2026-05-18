@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentHousehold } from "@/lib/household";
 import { getOrCreateActiveList } from "@/lib/list";
 import { ListView } from "@/components/list-view";
-import type { AiSuggestion } from "@/components/ai-suggestion-card";
+import type { AiSuggestion, AiStatus } from "@/components/ai-suggestion-card";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +116,7 @@ export default async function ListPage({
   let rows: ListItemRow[] = [];
   let quickSuggestions: QuickSuggestion[] = [];
   let aiSuggestions: AiSuggestion[] = [];
+  let aiStatus: AiStatus = { tracked: 0, recurring: 0, dueNow: 0 };
 
   try {
     const { data, error } = await supabase
@@ -177,20 +178,17 @@ export default async function ListPage({
         default_qty: Number(r.default_qty),
         category: r.category,
       }));
-    // AI proactive suggestions: recurring items past or near their predicted
-    // re-purchase date, not currently on any active list in this household.
+    // AI proactive suggestions + status. We always show the card so the
+    // user sees what the recurrence engine is doing, even before it has
+    // anything to suggest.
     const horizon = new Date(Date.now() + 2 * 86400000).toISOString();
-    const [lowRes, onListsRes] = await Promise.all([
+    const [profilesRes, onListsRes] = await Promise.all([
       supabase
         .from("consumption_profiles")
         .select(
-          "item_id, avg_qty, avg_cycle_days, last_purchased_at, next_predicted_date, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key))",
+          "item_id, avg_qty, avg_cycle_days, sample_count, is_recurring, last_purchased_at, next_predicted_date, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key))",
         )
-        .eq("household_id", household.id)
-        .eq("is_recurring", true)
-        .lte("next_predicted_date", horizon)
-        .order("next_predicted_date", { ascending: true })
-        .limit(20),
+        .eq("household_id", household.id),
       supabase
         .from("list_items")
         .select("item_id, shopping_lists!inner(household_id, status)")
@@ -198,10 +196,12 @@ export default async function ListPage({
         .eq("shopping_lists.status", "active"),
     ]);
 
-    type LowRow = {
+    type ProfileRow = {
       item_id: string;
       avg_qty: number | null;
       avg_cycle_days: number | null;
+      sample_count: number | null;
+      is_recurring: boolean | null;
       last_purchased_at: string | null;
       next_predicted_date: string | null;
       item: {
@@ -216,9 +216,20 @@ export default async function ListPage({
     const onAnyList = new Set(
       (onListsRes.data ?? []).map((r) => r.item_id as string),
     );
+    const profiles = (profilesRes.data ?? []) as unknown as ProfileRow[];
 
-    aiSuggestions = ((lowRes.data ?? []) as unknown as LowRow[])
-      .filter((r) => r.item && !onAnyList.has(r.item_id))
+    aiSuggestions = profiles
+      .filter(
+        (r) =>
+          r.item &&
+          r.is_recurring &&
+          r.next_predicted_date &&
+          r.next_predicted_date <= horizon &&
+          !onAnyList.has(r.item_id),
+      )
+      .sort((a, b) =>
+        (a.next_predicted_date ?? "").localeCompare(b.next_predicted_date ?? ""),
+      )
       .slice(0, 6)
       .map((r) => ({
         item_id: r.item_id,
@@ -230,6 +241,14 @@ export default async function ListPage({
         avg_cycle_days: r.avg_cycle_days,
         last_purchased_at: r.last_purchased_at,
       }));
+
+    const tracked = profiles.length;
+    const recurring = profiles.filter((p) => p.is_recurring).length;
+    aiStatus = {
+      tracked,
+      recurring,
+      dueNow: aiSuggestions.length,
+    };
   } catch (e) {
     errorDetail =
       e instanceof Error
@@ -272,6 +291,7 @@ export default async function ListPage({
       initialItems={rows}
       initialSuggestions={quickSuggestions}
       aiSuggestions={aiSuggestions}
+      aiStatus={aiStatus}
     />
   );
 }
