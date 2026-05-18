@@ -52,7 +52,7 @@ PRESERVE the user's input shape closely. Do NOT strip these qualifiers when they
 Output canonical_fi as close to the user's Finnish input as possible (just lowercase + trim). Output canonical_sv as the Finland-Swedish translation of the FULL phrase including any preserved modifiers.
 
 Finland-Swedish preferred over rikssvenska in canonical_sv:
-- "malet kött" (FI-SV) — NOT "köttfärs" (rikssvenska)
+- "maletkött" (FI-SV, single word as used in Finland) — NOT "malet kött", NOT "köttfärs" (rikssvenska)
 - "saft" (FI-SV, juice in Finland)
 - "keso" (FI-SV)
 - "semla" (FI-SV: bread roll)
@@ -65,7 +65,7 @@ Return fields:
 - default_qty: sensible default (milk: 1 l, eggs: 6 kpl, mince: 1 pkt)
 
 Examples:
-"10% jauheliha" -> {canonical_fi: "10% jauheliha", canonical_sv: "10% malet kött", category_key: "meat", unit: "pkt", default_qty: 1}
+"10% jauheliha" -> {canonical_fi: "10% jauheliha", canonical_sv: "10% maletkött", category_key: "meat", unit: "pkt", default_qty: 1}
 "luomu kananmuna" -> {canonical_fi: "luomu kananmuna", canonical_sv: "ekologiskt ägg", category_key: "dairy", unit: "kpl", default_qty: 6}
 "rasvaton maito" -> {canonical_fi: "rasvaton maito", canonical_sv: "fettfri mjölk", category_key: "dairy", unit: "l", default_qty: 1}
 "banana" -> {canonical_fi: "banaani", canonical_sv: "banan", category_key: "produce", unit: "kpl", default_qty: 4}

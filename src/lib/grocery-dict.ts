@@ -15,7 +15,7 @@ export type DictEntry = {
  * the most common items.
  *
  * Finland-Swedish (finlandssvenska) is preferred over rikssvenska:
- *   malet kött (FI-SV) — not köttfärs (rikssvenska)
+ *   maletkött (FI-SV) — not köttfärs (rikssvenska)
  *   saft (FI-SV)       — not juice
  *   keso (FI-SV)       — not keso/cottage cheese
  *   semla (FI-SV)      — bread roll (different meaning than in Sweden)
@@ -44,7 +44,7 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["kananmuna", "kananmunia", "muna", "munaa", "munat", "ägg", "egg", "eggs"] },
 
   // Meat
-  { fi: "jauheliha", sv: "malet kött", category: "meat", unit: "pkt", default_qty: 1,
+  { fi: "jauheliha", sv: "maletkött", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["jauheliha", "jauhelihaa", "malet kött", "maletkött", "köttfärs", "ground beef", "ground meat", "mince", "mincemeat", "naudan jauheliha"] },
   { fi: "kana", sv: "kyckling", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["kana", "kanaa", "kyckling", "chicken", "broileri", "broilerin fileesuikale", "kanafile", "kananfilee", "höna"] },

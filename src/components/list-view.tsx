@@ -16,6 +16,8 @@ import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst } from "@/lib/utils";
 import { categoryDot } from "@/lib/category-colors";
 import { getItemEmoji } from "@/lib/item-emoji";
+import { lookupDict } from "@/lib/grocery-dict";
+import { CATEGORY_META } from "@/lib/category-meta";
 import {
   editListItem,
   quickAdd,
@@ -215,29 +217,46 @@ export function ListView({
     return true;
   }
 
-  // Optimistic tentative row for genuinely new items. We don't know the
-  // canonical name / category yet, so we render a placeholder using the
-  // user's raw input. The server's resolveItem will replace it via
-  // refresh() once it finishes (~2s later).
+  // Optimistic tentative row for new items. Uses the client-side dict to
+  // resolve the canonical name + category so the placeholder sits in the
+  // right group (no flicker into 'Other' for known items). When the input
+  // is unknown to the dict we render NO placeholder — better to wait the
+  // full server roundtrip than show a wrong category.
   function applyOptimisticNew(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
     const qtyMatch = trimmed.match(/^\s*(\d+(?:[.,]\d+)?)\s+(.+)$/);
-    const qty = qtyMatch ? Number(qtyMatch[1].replace(",", ".")) : 1;
-    const name = (qtyMatch ? qtyMatch[2] : trimmed).trim();
+    const qtyFromInput = qtyMatch
+      ? Number(qtyMatch[1].replace(",", "."))
+      : null;
+    const rest = qtyMatch ? qtyMatch[2] : trimmed;
+
+    // Strip leading modifier tokens (10%, luomu, rasvaton, kevyt, etc.)
+    // to find the base item word for dict lookup.
+    const modifierRe =
+      /^(\s*(?:\d+[.,]?\d*\s*%|luomu|eko|ekologisk|organic|rasvaton|kevyt|fettfri|lätt|mager|tuore|pakaste|fryst)\s+)+/i;
+    const bare = rest.replace(modifierRe, "").trim();
+
+    const dictHit = lookupDict(bare) ?? lookupDict(rest);
+    if (!dictHit) return; // unknown — wait for server, no placeholder
+
+    const cat = CATEGORY_META[dictHit.category] ?? null;
     const tempItemId = `pending-${nextTempId()}`;
     const tempId = nextTempId();
     const placeholder: ListItemRow = {
       id: tempId,
-      qty,
-      unit: "kpl",
+      qty: qtyFromInput ?? dictHit.default_qty,
+      unit: dictHit.unit,
       checked: false,
       note: null,
       item: {
         id: tempItemId,
-        canonical_fi: name,
-        canonical_sv: name,
-        category: null,
+        // Reconstruct user-visible canonical with any preserved modifiers.
+        canonical_fi:
+          bare === rest ? dictHit.fi : `${rest.slice(0, rest.length - bare.length)}${dictHit.fi}`.trim(),
+        canonical_sv:
+          bare === rest ? dictHit.sv : `${rest.slice(0, rest.length - bare.length)}${dictHit.sv}`.trim(),
+        category: cat,
       },
     };
     setItems((prev) => [...prev, placeholder]);
