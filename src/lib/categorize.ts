@@ -290,6 +290,17 @@ export async function resolveItem(
   // 3. Claude (with FSOB post-correction) for the long tail
   const claudeItem = await categorize(input);
 
+  // Per user request: do NOT rename what the user typed. Claude may
+  // normalise 'Psyllium' to 'psyllium husk' or 'Frysta hallon' to
+  // 'fryst hallon' — neither is wanted. The dict + OFF catalog produce
+  // intentional canonical translations (those paths return before
+  // reaching here). For everything else, preserve the raw input as the
+  // canonical name in BOTH languages, and use Claude only for the
+  // category / unit / qty signals.
+  const preservedCanonical = input.trim();
+  const finalFi = preservedCanonical;
+  const finalSv = preservedCanonical;
+
   const { data: cat } = await supabase
     .from("categories")
     .select("id")
@@ -300,8 +311,8 @@ export async function resolveItem(
     .from("items")
     .insert({
       household_id: householdId,
-      canonical_fi: claudeItem.canonical_fi,
-      canonical_sv: claudeItem.canonical_sv,
+      canonical_fi: finalFi,
+      canonical_sv: finalSv,
       category_id: cat?.id ?? null,
       unit: claudeItem.unit,
       default_qty: claudeItem.default_qty,
@@ -315,7 +326,7 @@ export async function resolveItem(
         .from("items")
         .select("id, canonical_fi, canonical_sv, category_id, unit, default_qty")
         .eq("household_id", householdId)
-        .eq("canonical_fi", claudeItem.canonical_fi)
+        .eq("canonical_fi", finalFi)
         .single();
       if (existing) {
         await supabase
@@ -335,16 +346,6 @@ export async function resolveItem(
 
   const aliases = [
     { item_id: inserted.id, alias: input.toLowerCase(), lang: "fi" as const },
-    {
-      item_id: inserted.id,
-      alias: claudeItem.canonical_fi.toLowerCase(),
-      lang: "fi" as const,
-    },
-    {
-      item_id: inserted.id,
-      alias: claudeItem.canonical_sv.toLowerCase(),
-      lang: "sv" as const,
-    },
   ];
   await supabase
     .from("item_aliases")

@@ -19,6 +19,7 @@ import { categoryDot } from "@/lib/category-colors";
 import { getItemEmoji } from "@/lib/item-emoji";
 import { lookupDict } from "@/lib/grocery-dict";
 import { CATEGORY_META } from "@/lib/category-meta";
+import { unitLabel } from "@/lib/i18n";
 import {
   editListItem,
   quickAdd,
@@ -190,7 +191,34 @@ export function ListView({
     };
   }, [listId, refresh, router, visibleListIds]);
 
+  // When the tab/PWA returns to the foreground after being backgrounded,
+  // the realtime websocket may have missed events while sleeping. Force
+  // a refresh so the visible list catches up.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        void refresh();
+        router.refresh();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [refresh, router]);
+
   // Group by category (checked items stay in their category)
+  const pendingItems = useMemo(
+    () => items.filter((r) => !r.checked),
+    [items],
+  );
+  const purchasedItems = useMemo(
+    () => items.filter((r) => r.checked),
+    [items],
+  );
+
   const grouped = useMemo(() => {
     const map = new Map<
       string,
@@ -202,7 +230,7 @@ export function ListView({
         rows: ListItemRow[];
       }
     >();
-    for (const item of items) {
+    for (const item of pendingItems) {
       const key = item.item.category?.key ?? "other";
       const label =
         lang === "fi"
@@ -215,9 +243,9 @@ export function ListView({
       map.get(key)!.rows.push(item);
     }
     return [...map.entries()].sort((a, b) => a[1].sort - b[1].sort);
-  }, [items, lang]);
+  }, [pendingItems, lang]);
 
-  const checkedCount = items.filter((r) => r.checked).length;
+  const checkedCount = purchasedItems.length;
   const totalCount = items.length;
   const progress = totalCount === 0 ? 0 : (checkedCount / totalCount) * 100;
 
@@ -225,6 +253,8 @@ export function ListView({
     if (filter === "all") return grouped;
     return grouped.filter(([key]) => key === filter);
   }, [grouped, filter]);
+
+  const [completedOpen, setCompletedOpen] = useState(true);
 
   async function submitQuickAdd(text: string) {
     const trimmed = text.trim();
@@ -367,6 +397,19 @@ export function ListView({
     );
     try {
       await updateListItem(row.id, { qty: newQty });
+    } catch {
+      await refresh();
+    }
+  }
+
+  async function handleQtySet(row: ListItemRow, qty: number) {
+    const clean = Math.max(0.01, Number.isFinite(qty) ? qty : Number(row.qty));
+    if (clean === Number(row.qty)) return;
+    setItems((prev) =>
+      prev.map((r) => (r.id === row.id ? { ...r, qty: clean } : r)),
+    );
+    try {
+      await updateListItem(row.id, { qty: clean });
     } catch {
       await refresh();
     }
@@ -578,7 +621,7 @@ export function ListView({
           </div>
         ) : currentListType === "general" ? (
           <ul className="space-y-1.5">
-            {items.map((row) => (
+            {pendingItems.map((row) => (
               <ListItemRowComp
                 key={row.id}
                 row={row}
@@ -586,7 +629,7 @@ export function ListView({
                 showEmoji={false}
                 onToggle={() => handleToggle(row.id, !row.checked)}
                 onRemove={() => handleRemove(row.id)}
-                onDelta={(d) => handleQtyDelta(row, d)}
+                onQtyChange={(q) => handleQtySet(row, q)}
                 onRenameSave={(name) => handleRenameSave(row, name)}
               />
             ))}
@@ -610,7 +653,7 @@ export function ListView({
                       showEmoji
                       onToggle={() => handleToggle(row.id, !row.checked)}
                       onRemove={() => handleRemove(row.id)}
-                      onDelta={(d) => handleQtyDelta(row, d)}
+                      onQtyChange={(q) => handleQtySet(row, q)}
                       onRenameSave={(name) => handleRenameSave(row, name)}
                     />
                   ))}
@@ -620,35 +663,41 @@ export function ListView({
           </div>
         )}
 
-        {/* Remove checked items */}
-        {checkedCount > 0 && (
-          <div className="mt-6 flex justify-end">
+        {/* Completed / purchased section */}
+        {purchasedItems.length > 0 && (
+          <section className="mt-8">
             <button
               type="button"
-              onClick={() =>
-                startTransition(async () => {
-                  setError(null);
-                  const res = await removeCheckedItems(listId);
-                  if (!res.ok) {
-                    setError(
-                      `${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`,
-                    );
-                  } else {
-                    await refresh();
-                  }
-                })
-              }
-              disabled={pending}
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 active:scale-95 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+              onClick={() => setCompletedOpen((v) => !v)}
+              className="mb-2 flex w-full items-center gap-2 text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
             >
-              {pending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-              {t("removeChecked", { n: checkedCount })}
+              <span
+                className={`transition-transform ${completedOpen ? "rotate-90" : ""}`}
+                aria-hidden
+              >
+                ▸
+              </span>
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              {t("completedSection")}
+              <span className="text-zinc-400">{purchasedItems.length}</span>
             </button>
-          </div>
+            {completedOpen && (
+              <ul className="space-y-1.5">
+                {purchasedItems.map((row) => (
+                  <ListItemRowComp
+                    key={row.id}
+                    row={row}
+                    lang={lang}
+                    showEmoji={currentListType === "grocery"}
+                    onToggle={() => handleToggle(row.id, !row.checked)}
+                    onRemove={() => handleRemove(row.id)}
+                    onQtyChange={(q) => handleQtySet(row, q)}
+                    onRenameSave={(name) => handleRenameSave(row, name)}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
         )}
         </main>
       </div>
@@ -694,7 +743,7 @@ function ListItemRowComp({
   showEmoji = true,
   onToggle,
   onRemove,
-  onDelta,
+  onQtyChange,
   onRenameSave,
 }: {
   row: ListItemRow;
@@ -702,7 +751,7 @@ function ListItemRowComp({
   showEmoji?: boolean;
   onToggle: () => void;
   onRemove: () => void;
-  onDelta: (delta: number) => void;
+  onQtyChange: (qty: number) => void;
   onRenameSave: (name: string) => void;
 }) {
   const name = lang === "fi" ? row.item.canonical_fi : row.item.canonical_sv;
@@ -710,6 +759,18 @@ function ListItemRowComp({
 
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(name);
+  const [editingQty, setEditingQty] = useState(false);
+  const [draftQty, setDraftQty] = useState(formatQty(row.qty));
+
+  function commitQty() {
+    setEditingQty(false);
+    const parsed = Number(draftQty.replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setDraftQty(formatQty(row.qty));
+      return;
+    }
+    onQtyChange(parsed);
+  }
 
   return (
     <li className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-2 shadow-sm dark:bg-zinc-900">
@@ -776,28 +837,42 @@ function ListItemRowComp({
         )}
       </div>
 
-      {/* Qty stepper */}
+      {/* Qty (editable inline) */}
       <div className="flex items-center gap-1 shrink-0">
-        <button
-          type="button"
-          onClick={() => onDelta(-1)}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50 active:scale-95 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-          disabled={Number(row.qty) <= 1}
-          aria-label="Decrease"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <span className="min-w-[3rem] text-center text-sm tabular-nums text-zinc-700 dark:text-zinc-200">
-          {formatQty(row.qty)} {row.unit}
+        {editingQty ? (
+          <input
+            type="text"
+            inputMode="decimal"
+            value={draftQty}
+            onChange={(e) => setDraftQty(e.target.value)}
+            onBlur={commitQty}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              else if (e.key === "Escape") {
+                setDraftQty(formatQty(row.qty));
+                setEditingQty(false);
+              }
+            }}
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-14 rounded-md border border-emerald-400 bg-white px-1 py-0.5 text-right text-sm tabular-nums text-zinc-900 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:bg-zinc-950 dark:text-zinc-50"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setDraftQty(formatQty(row.qty));
+              setEditingQty(true);
+            }}
+            className="min-w-[3rem] rounded-md px-2 py-1 text-right text-sm tabular-nums text-zinc-700 transition hover:bg-zinc-100 active:scale-95 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            aria-label="Edit quantity"
+          >
+            {formatQty(row.qty)}
+          </button>
+        )}
+        <span className="text-xs text-zinc-500 select-none">
+          {unitLabel(row.unit, lang)}
         </span>
-        <button
-          type="button"
-          onClick={() => onDelta(1)}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-          aria-label="Increase"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
       </div>
 
       {/* Remove */}

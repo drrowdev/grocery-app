@@ -139,6 +139,11 @@ const dict = {
     fi: "Poistetaanko lista \"{name}\" ja sen tuotteet?",
     sv: "Ta bort listan \"{name}\" och dess varor?",
   },
+  completedSection: { fi: "Ostetut", sv: "Köpta" },
+  completedSectionEmpty: {
+    fi: "Ei vielä ostettu mitään.",
+    sv: "Inget köpt ännu.",
+  },
   // Households
   createHouseholdTitle: {
     fi: "Luo ensimmäinen taloutesi",
@@ -321,4 +326,13 @@ export function t(
     }
   }
   return s;
+}
+
+/**
+ * Localise a unit code for display. 'kpl' renders as 'st' in Finland-Swedish.
+ * Other unit codes (kg, g, l, dl, ml, pkt) are identical in both languages.
+ */
+export function unitLabel(unit: string, lang: Lang): string {
+  if (unit === "kpl" && lang === "sv") return "st";
+  return unit;
 }
