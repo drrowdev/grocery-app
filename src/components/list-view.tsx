@@ -157,49 +157,49 @@ export function ListView({
   async function submitQuickAdd(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
-
-    // Optimistic merge: if the typed input plainly matches an item that's
-    // already on this list, bump its qty immediately so the UI feels
-    // instant. The server still runs (parsing, categorisation, recurrence)
-    // and reconciles via refresh() — but the user doesn't have to wait.
-    const match = trimmed.match(/^\s*(\d+(?:[.,]\d+)?)\s+(.+)$/);
-    const qtyFromInput = match ? Number(match[1].replace(",", ".")) : null;
-    const namePart = (match ? match[2] : trimmed).trim().toLowerCase();
-    if (namePart) {
-      const candidate = items.find(
-        (r) =>
-          r.item.canonical_fi.toLowerCase() === namePart ||
-          r.item.canonical_sv.toLowerCase() === namePart,
-      );
-      if (candidate) {
-        setItems((prev) =>
-          prev.map((r) =>
-            r.id === candidate.id
-              ? {
-                  ...r,
-                  qty: candidate.checked
-                    ? (qtyFromInput ?? candidate.qty)
-                    : Number(candidate.qty) + (qtyFromInput ?? 1),
-                  checked: false,
-                }
-              : r,
-          ),
-        );
-        if (inputRef.current) inputRef.current.value = "";
-      }
-    }
-
     const fd = new FormData();
     fd.set("text", text);
     fd.set("listId", currentListId);
     setError(null);
     const res = await quickAdd(fd);
     if (res.ok) {
-      if (inputRef.current) inputRef.current.value = "";
       await refresh();
     } else {
       setError(`${t("errorGeneric")}${res.message ? ` (${res.message})` : ""}`);
     }
+  }
+
+  // Synchronous optimistic merge for typed input. Returns true if a match
+  // was found and the local state was updated, false otherwise. Called
+  // OUTSIDE the React transition so the bump renders on the next frame
+  // instead of waiting for the server action to finish.
+  function applyOptimisticMerge(text: string): boolean {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+    const match = trimmed.match(/^\s*(\d+(?:[.,]\d+)?)\s+(.+)$/);
+    const qtyFromInput = match ? Number(match[1].replace(",", ".")) : null;
+    const namePart = (match ? match[2] : trimmed).trim().toLowerCase();
+    if (!namePart) return false;
+    const candidate = items.find(
+      (r) =>
+        r.item.canonical_fi.toLowerCase() === namePart ||
+        r.item.canonical_sv.toLowerCase() === namePart,
+    );
+    if (!candidate) return false;
+    setItems((prev) =>
+      prev.map((r) =>
+        r.id === candidate.id
+          ? {
+              ...r,
+              qty: candidate.checked
+                ? (qtyFromInput ?? candidate.qty)
+                : Number(candidate.qty) + (qtyFromInput ?? 1),
+              checked: false,
+            }
+          : r,
+      ),
+    );
+    return true;
   }
 
   async function handleToggle(rowId: string, nextChecked: boolean) {
@@ -342,7 +342,12 @@ export function ListView({
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
             const text = String(fd.get("text") ?? "").trim();
-            if (text) startTransition(() => submitQuickAdd(text));
+            if (!text) return;
+            // Apply optimistic merge OUTSIDE the transition so the bump
+            // renders immediately (transitions defer state updates).
+            applyOptimisticMerge(text);
+            if (inputRef.current) inputRef.current.value = "";
+            startTransition(() => submitQuickAdd(text));
           }}
           className="flex gap-2 mb-1.5"
         >
@@ -357,6 +362,8 @@ export function ListView({
           <VoiceButton
             onResult={(text) => {
               if (inputRef.current) inputRef.current.value = text;
+              applyOptimisticMerge(text);
+              if (inputRef.current) inputRef.current.value = "";
               startTransition(() => submitQuickAdd(text));
             }}
           />
