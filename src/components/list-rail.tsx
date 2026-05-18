@@ -123,7 +123,7 @@ export function ListRail({
                 <span className="flex-1 truncate">{list.name}</span>
                 {list.itemCount > 0 && (
                   <span
-                    className={`text-xs tabular-nums ${
+                    className={`text-xs tabular-nums transition-opacity group-hover:opacity-0 ${
                       isCurrent ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-400"
                     }`}
                   >
