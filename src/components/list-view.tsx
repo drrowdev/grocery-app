@@ -134,12 +134,33 @@ export function ListView({
         "postgres_changes",
         { event: "*", schema: "public", table: "list_items" },
         (payload) => {
-          const row = (payload.new ?? payload.old) as { list_id?: string };
-          const evtListId = row?.list_id;
           if (process.env.NODE_ENV !== "production") {
-            console.log("[rt] list_items", payload.eventType, evtListId);
+            console.log(
+              "[rt] list_items",
+              payload.eventType,
+              (payload.new as { list_id?: string } | null)?.list_id ??
+                (payload.old as { list_id?: string } | null)?.list_id,
+            );
           }
-          if (!evtListId) return;
+          // DELETE payloads may not always carry the full row even with
+          // REPLICA IDENTITY FULL (depends on Supabase realtime version).
+          // Refresh both the active list and the route on every DELETE so
+          // rail counts + visible items always reconcile.
+          if (payload.eventType === "DELETE") {
+            void refresh();
+            router.refresh();
+            return;
+          }
+          const row = (payload.new ?? payload.old) as {
+            list_id?: string;
+          } | null;
+          const evtListId = row?.list_id;
+          if (!evtListId) {
+            // Unknown list id — be safe and refresh both.
+            void refresh();
+            router.refresh();
+            return;
+          }
           if (evtListId === listId) {
             void refresh();
           } else if (visibleListIds.has(evtListId)) {
