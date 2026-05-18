@@ -8,27 +8,14 @@ import {
   useState,
   useTransition,
 } from "react";
-import { useRouter } from "next/navigation";
-import {
-  History,
-  Loader2,
-  LogOut,
-  Minus,
-  Plus,
-  ShoppingCart,
-  Trash2,
-  Users,
-  X,
-} from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
-import { LangToggle } from "@/components/lang-toggle";
-import { ActionMenu } from "@/components/action-menu";
+import { AppHeader } from "@/components/app-header";
 import { VoiceButton } from "@/components/voice-button";
 import { createClient } from "@/lib/supabase/client";
 import { capitalizeFirst } from "@/lib/utils";
 import { categoryDot } from "@/lib/category-colors";
 import { getItemEmoji } from "@/lib/item-emoji";
-import { signOut } from "@/app/auth/actions";
 import {
   editListItem,
   quickAdd,
@@ -64,7 +51,6 @@ export function ListView({
   initialItems: ListItemRow[];
   initialSuggestions: QuickSuggestion[];
 }) {
-  const router = useRouter();
   const { lang, t } = useLang();
   const [items, setItems] = useState<ListItemRow[]>(initialItems);
   const [pending, startTransition] = useTransition();
@@ -266,40 +252,14 @@ export function ListView({
   return (
     <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
       <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
-              {householdName}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 mt-1">
+        <AppHeader
+          title={householdName}
+          rightExtra={
             <span className="text-sm tabular-nums text-zinc-500">
               {checkedCount}/{totalCount}
             </span>
-            <LangToggle />
-            <ActionMenu
-              items={[
-                {
-                  label: t("household"),
-                  icon: <Users className="h-4 w-4" />,
-                  onClick: () => router.push("/household"),
-                },
-                {
-                  label: t("history"),
-                  icon: <History className="h-4 w-4" />,
-                  onClick: () => router.push("/history"),
-                },
-                {
-                  label: t("signOut"),
-                  icon: <LogOut className="h-4 w-4" />,
-                  onClick: () => startTransition(() => signOut()),
-                  danger: true,
-                },
-              ]}
-            />
-          </div>
-        </div>
+          }
+        />
 
         {/* Input + Add button */}
         <form

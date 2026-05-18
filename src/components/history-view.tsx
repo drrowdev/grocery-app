@@ -1,12 +1,10 @@
 "use client";
 
 import { useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, History, Loader2, Plus } from "lucide-react";
+import { History, Loader2, Plus } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
-import { LangToggle } from "@/components/lang-toggle";
-import { SignOutButton } from "@/components/sign-out-button";
+import { AppHeader } from "@/components/app-header";
 import { capitalizeFirst } from "@/lib/utils";
 import { reorderFromList } from "@/app/history/actions";
 import type { HistoryList } from "@/app/history/page";
@@ -36,32 +34,13 @@ export function HistoryView({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="flex flex-col flex-1 min-h-dvh bg-gradient-to-b from-emerald-50 to-white dark:from-zinc-950 dark:to-black">
-      <header className="flex items-center justify-between px-5 py-4 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/70 dark:bg-zinc-950/70 backdrop-blur">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href="/list"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="min-w-0">
-            <h1 className="text-base font-semibold leading-none text-zinc-900 dark:text-zinc-50 truncate">
-              {t("history")}
-            </h1>
-            <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
-              {householdName}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <LangToggle />
-          <SignOutButton />
-        </div>
-      </header>
-
-      <main className="flex-1 px-5 py-6 mx-auto w-full max-w-2xl">
+    <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
+      <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
+        <AppHeader
+          title={t("history")}
+          subtitle={householdName}
+          backHref="/list"
+        />
         {lists.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50">
             <History className="mx-auto mb-2 h-6 w-6 text-zinc-400" />
@@ -126,10 +105,6 @@ export function HistoryView({
           </ul>
         )}
       </main>
-
-      <footer className="px-5 py-4 text-center text-xs text-zinc-400">
-        Ostoslista · v0.1
-      </footer>
     </div>
   );
 }
