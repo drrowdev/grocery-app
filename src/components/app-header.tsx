@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, History, LogOut, Users } from "lucide-react";
+import { ArrowLeft, History, LogOut, Tag, Users } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { LangToggle } from "@/components/lang-toggle";
 import { ActionMenu } from "@/components/action-menu";
@@ -34,7 +34,10 @@ export function AppHeader({
   // Prefetch sibling routes so navigation feels instant
   useEffect(() => {
     router.prefetch("/list");
-    if (isOwner) router.prefetch("/household");
+    if (isOwner) {
+      router.prefetch("/household");
+      router.prefetch("/items");
+    }
     router.prefetch("/history");
   }, [router, isOwner]);
 
@@ -55,6 +58,11 @@ export function AppHeader({
       label: t("household"),
       icon: <Users className="h-4 w-4" />,
       onClick: () => router.push("/household"),
+    });
+    menuItems.push({
+      label: t("manageItems"),
+      icon: <Tag className="h-4 w-4" />,
+      onClick: () => router.push("/items"),
     });
   }
   menuItems.push({

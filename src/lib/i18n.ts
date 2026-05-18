@@ -251,7 +251,37 @@ const dict = {
     fi: "ja valitse \"Lisää aloitusnäyttöön\".",
     sv: "och välj \"Lägg till på hemskärmen\".",
   },
-  // Household management
+  manageItems: { fi: "Hallinnoi tuotteita", sv: "Hantera varor" },
+  itemsAdmin: { fi: "Tuoteluettelo", sv: "Varuregister" },
+  itemsAdminSubtitle: {
+    fi: "Tarkista ja korjaa kotitalouden tuotteiden kategoriat.",
+    sv: "Granska och rätta kategorier för hushållets varor.",
+  },
+  filterUncategorized: { fi: "Vain luokittelemattomat", sv: "Bara okategoriserade" },
+  filterAll: { fi: "Kaikki", sv: "Alla" },
+  uncategorized: { fi: "Ei kategoriaa", sv: "Ingen kategori" },
+  addAlias: { fi: "Lisää synonyymi", sv: "Lägg till synonym" },
+  aliasPlaceholder: {
+    fi: "esim. maitoa, milk",
+    sv: "t.ex. mjölk, milk",
+  },
+  aliasHint: {
+    fi: "Synonyymit auttavat tunnistamaan saman tuotteen jatkossa.",
+    sv: "Synonymer hjälper att känna igen samma vara framöver.",
+  },
+  itemNoUsage: {
+    fi: "Ei vielä yhdelläkään listalla.",
+    sv: "Finns inte på någon lista ännu.",
+  },
+  itemUsage: {
+    fi: "{n} listalla, {p} ostoa",
+    sv: "{n} listor, {p} köp",
+  },
+  deleteItem: { fi: "Poista tuote", sv: "Ta bort vara" },
+  deleteItemConfirm: {
+    fi: "Poistetaanko tuote \"{name}\" pysyvästi?",
+    sv: "Ta bort varan \"{name}\" permanent?",
+  },
   inviteTitle: { fi: "Kutsu jäsen", sv: "Bjud in medlem" },
   invite: { fi: "Kutsu", sv: "Bjud in" },
   inviteHint: {
