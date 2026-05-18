@@ -26,6 +26,7 @@ import {
 } from "@/app/list/actions";
 import type { ListItemRow, ListSummary, QuickSuggestion } from "@/app/list/page";
 import { ListPicker } from "@/components/list-picker";
+import { ListRail } from "@/components/list-rail";
 
 const LIST_ITEM_SELECT =
   "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
@@ -257,22 +258,30 @@ export function ListView({
 
   return (
     <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
-      <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
-        <AppHeader
-          title={
-            <ListPicker
-              currentId={currentListId}
-              currentName={currentListName}
-              lists={lists}
-            />
-          }
-          isOwner={isOwner}
-          rightExtra={
-            <span className="text-sm tabular-nums text-zinc-500">
-              {checkedCount}/{totalCount}
-            </span>
-          }
-        />
+      <div className="flex-1 px-4 py-5 mx-auto w-full max-w-5xl flex gap-4">
+        <ListRail currentId={currentListId} lists={lists} />
+        <main className="flex-1 min-w-0 max-w-2xl mx-auto">
+          <AppHeader
+            title={
+              <span className="md:hidden">
+                <ListPicker
+                  currentId={currentListId}
+                  currentName={currentListName}
+                  lists={lists}
+                />
+              </span>
+            }
+            isOwner={isOwner}
+            rightExtra={
+              <span className="text-sm tabular-nums text-zinc-500">
+                {checkedCount}/{totalCount}
+              </span>
+            }
+          />
+          {/* Desktop: list name as a plain bold title (rail shows the picker) */}
+          <h1 className="hidden md:block -mt-2 mb-4 text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
+            {currentListName}
+          </h1>
 
         {/* Input + Add button */}
         <form
@@ -433,7 +442,8 @@ export function ListView({
             </button>
           </div>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

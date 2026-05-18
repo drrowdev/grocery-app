@@ -101,6 +101,7 @@ const dict = {
     fi: "Usein ostettuja",
     sv: "Köps ofta",
   },
+  listsLabel: { fi: "Listat", sv: "Listor" },
   newList: { fi: "Uusi lista", sv: "Ny lista" },
   newListPlaceholder: {
     fi: "Listan nimi…",
