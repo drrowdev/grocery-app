@@ -54,11 +54,11 @@ export default async function ItemsAdminPage() {
         .order("sort_order"),
       supabase
         .from("list_items")
-        .select("item_id, shopping_lists!inner(household_id)")
+        .select("item_id, shopping_lists!inner(household_id, type)")
         .eq("shopping_lists.household_id", household.id),
       supabase
         .from("purchases")
-        .select("item_id")
+        .select("item_id, list:shopping_lists(type)")
         .eq("household_id", household.id),
       supabase
         .from("item_aliases")
@@ -78,14 +78,33 @@ export default async function ItemsAdminPage() {
     } | null;
   };
 
+  // Items that appear on at least one grocery-type list (now or ever via
+  // a purchase). Pharmacy / general items are intentionally excluded from
+  // the admin view because categorisation doesn't apply to them.
+  const groceryItemIds = new Set<string>();
+  type LIRow = { item_id: string; shopping_lists: { type: string } | null };
+  for (const r of (listItemsRes.data ?? []) as unknown as LIRow[]) {
+    if (r.shopping_lists?.type === "grocery") {
+      groceryItemIds.add(r.item_id);
+    }
+  }
+  type PRow = { item_id: string; list: { type: string } | null };
+  for (const r of (purchasesRes.data ?? []) as unknown as PRow[]) {
+    if (r.list?.type === "grocery" || r.list == null) {
+      // Treat purchases with no linked list (older rows) as grocery too,
+      // so existing history doesn't disappear.
+      groceryItemIds.add(r.item_id);
+    }
+  }
+
   const listCounts = new Map<string, number>();
-  for (const r of listItemsRes.data ?? []) {
-    const id = r.item_id as string;
+  for (const r of (listItemsRes.data ?? []) as unknown as LIRow[]) {
+    const id = r.item_id;
     listCounts.set(id, (listCounts.get(id) ?? 0) + 1);
   }
   const purchaseCounts = new Map<string, number>();
-  for (const r of purchasesRes.data ?? []) {
-    const id = r.item_id as string;
+  for (const r of (purchasesRes.data ?? []) as unknown as PRow[]) {
+    const id = r.item_id;
     purchaseCounts.set(id, (purchaseCounts.get(id) ?? 0) + 1);
   }
   const aliasesByItem = new Map<string, { alias: string; lang: "fi" | "sv" }[]>();
@@ -98,8 +117,9 @@ export default async function ItemsAdminPage() {
     });
   }
 
-  const items: AdminItem[] = ((itemsRes.data ?? []) as unknown as ItemRow[]).map(
-    (i) => ({
+  const items: AdminItem[] = ((itemsRes.data ?? []) as unknown as ItemRow[])
+    .filter((i) => groceryItemIds.has(i.id))
+    .map((i) => ({
       id: i.id,
       canonical_fi: i.canonical_fi,
       canonical_sv: i.canonical_sv,
@@ -111,8 +131,7 @@ export default async function ItemsAdminPage() {
       list_count: listCounts.get(i.id) ?? 0,
       purchase_count: purchaseCounts.get(i.id) ?? 0,
       aliases: aliasesByItem.get(i.id) ?? [],
-    }),
-  );
+    }));
 
   const categories: AdminCategory[] = (categoriesRes.data ?? []).map((c) => ({
     key: c.key as string,

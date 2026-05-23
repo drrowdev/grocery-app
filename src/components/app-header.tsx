@@ -44,16 +44,36 @@ export function AppHeader({
   }, [router, isOwner]);
 
   // Owners see a live count of uncategorised items in the ⋯ menu so they
-  // know when items need cleaning up.
+  // know when items need cleaning up. Restricted to items that appear on
+  // at least one grocery-type list — pharmacy / general items don't need
+  // categories.
   useEffect(() => {
     if (!isOwner) return;
     let cancelled = false;
     (async () => {
       const supabase = createClient();
+      // Find item_ids used on any grocery list in any of the user's households.
+      const { data: groceryRows } = await supabase
+        .from("list_items")
+        .select("item_id, shopping_lists!inner(type)")
+        .eq("shopping_lists.type", "grocery");
+      if (cancelled || !groceryRows) return;
+      const groceryIds = Array.from(
+        new Set(
+          (groceryRows as unknown as { item_id: string }[]).map(
+            (r) => r.item_id,
+          ),
+        ),
+      );
+      if (groceryIds.length === 0) {
+        setUncategorizedCount(0);
+        return;
+      }
       const { count } = await supabase
         .from("items")
         .select("id", { count: "exact", head: true })
-        .is("category_id", null);
+        .is("category_id", null)
+        .in("id", groceryIds);
       if (!cancelled && typeof count === "number") {
         setUncategorizedCount(count);
       }
