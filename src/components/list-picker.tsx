@@ -96,7 +96,7 @@ export function ListPicker({
           />
           {otherPending > 0 && (
             <span
-              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-zinc-50 dark:ring-zinc-950 animate-pulse"
+              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-zinc-50 dark:ring-zinc-950"
               aria-label={`Other lists have ${otherPending} pending items`}
               title={`Other lists have ${otherPending} pending items`}
             />
