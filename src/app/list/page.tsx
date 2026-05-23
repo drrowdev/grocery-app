@@ -48,6 +48,10 @@ export type ListSummary = {
   name: string;
   type: "grocery" | "general";
   itemCount: number;
+  /** Items not yet checked off. Used to show an unread-style badge in
+   *  the rail and the mobile picker so the user knows other lists need
+   *  attention. */
+  pendingCount: number;
 };
 
 export default async function ListPage({
@@ -70,7 +74,7 @@ export default async function ListPage({
   const [allListsRes, catalogRes] = await Promise.all([
     supabase
       .from("shopping_lists")
-      .select("id, name, type, status, created_at, list_items(id)")
+      .select("id, name, type, status, created_at, list_items(id, checked)")
       .eq("household_id", household.id)
       .eq("status", "active")
       .order("created_at", { ascending: true }),
@@ -93,19 +97,32 @@ export default async function ListPage({
     type: "grocery" | "general";
     status: string;
     created_at: string;
-    list_items: { id: string }[] | null;
+    list_items: { id: string; checked: boolean }[] | null;
   };
-  let allLists = ((allListsRaw ?? []) as unknown as ListRow[]).map((l) => ({
-    id: l.id,
-    name: l.name,
-    type: l.type ?? "grocery",
-    itemCount: l.list_items?.length ?? 0,
-  })) as ListSummary[];
+  let allLists = ((allListsRaw ?? []) as unknown as ListRow[]).map((l) => {
+    const rows = l.list_items ?? [];
+    const pendingCount = rows.filter((r) => !r.checked).length;
+    return {
+      id: l.id,
+      name: l.name,
+      type: l.type ?? "grocery",
+      itemCount: rows.length,
+      pendingCount,
+    };
+  }) as ListSummary[];
 
   // If no lists yet, lazily create one
   if (allLists.length === 0) {
     const created = await getOrCreateActiveList(household.id);
-    allLists = [{ id: created.id, name: created.name, type: "grocery", itemCount: 0 }];
+    allLists = [
+      {
+        id: created.id,
+        name: created.name,
+        type: "grocery",
+        itemCount: 0,
+        pendingCount: 0,
+      },
+    ];
   }
 
   const selected =

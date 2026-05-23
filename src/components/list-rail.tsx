@@ -121,14 +121,23 @@ export function ListRail({
                   }`}
                 />
                 <span className="flex-1 truncate">{list.name}</span>
-                {list.itemCount > 0 && (
+                {(list.pendingCount ?? 0) > 0 ? (
                   <span
-                    className={`text-xs tabular-nums transition-opacity group-hover:opacity-0 ${
-                      isCurrent ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-400"
-                    }`}
+                    className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold text-white transition-opacity group-hover:opacity-0"
+                    title={`${list.pendingCount} pending`}
                   >
-                    {list.itemCount}
+                    {list.pendingCount}
                   </span>
+                ) : (
+                  list.itemCount > 0 && (
+                    <span
+                      className={`text-xs tabular-nums transition-opacity group-hover:opacity-0 ${
+                        isCurrent ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-400"
+                      }`}
+                    >
+                      {list.itemCount}
+                    </span>
+                  )
                 )}
               </Link>
 

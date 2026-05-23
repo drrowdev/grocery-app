@@ -11,6 +11,7 @@ export type ListSummary = {
   id: string;
   name: string;
   itemCount: number;
+  pendingCount?: number;
 };
 
 export function ListPicker({
@@ -68,6 +69,15 @@ export function ListPicker({
     };
   }, [open]);
 
+  // Count pending items on lists other than the one currently open.
+  // Used to show a small dot beside the picker title so the user knows
+  // another list has unchecked items waiting.
+  const otherPending = lists.reduce(
+    (acc, l) =>
+      l.id === currentId ? acc : acc + (l.pendingCount ?? 0),
+    0,
+  );
+
   return (
     <div ref={containerRef} className="relative inline-block min-w-0">
       <button
@@ -78,6 +88,15 @@ export function ListPicker({
         <h1 className="text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
           {currentName}
         </h1>
+        {otherPending > 0 && (
+          <span
+            className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-semibold text-white"
+            aria-label={`${otherPending} items on other lists`}
+            title={`${otherPending} items on other lists`}
+          >
+            {otherPending}
+          </span>
+        )}
         <ChevronDown
           className={`h-5 w-5 shrink-0 text-zinc-400 transition-transform ${
             open ? "rotate-180" : ""
@@ -145,9 +164,10 @@ export function ListPicker({
                         >
                           <Check className="h-4 w-4 text-emerald-600" />
                           <span className="flex-1 truncate">{list.name}</span>
-                          <span className="text-xs text-zinc-400">
-                            {list.itemCount}
-                          </span>
+                          <PendingBadge
+                            pending={list.pendingCount}
+                            total={list.itemCount}
+                          />
                         </button>
                       ) : (
                         <Link
@@ -158,9 +178,10 @@ export function ListPicker({
                         >
                           <span className="w-4" />
                           <span className="flex-1 truncate">{list.name}</span>
-                          <span className="text-xs text-zinc-400">
-                            {list.itemCount}
-                          </span>
+                          <PendingBadge
+                            pending={list.pendingCount}
+                            total={list.itemCount}
+                          />
                         </Link>
                       )}
                       <button
@@ -282,4 +303,22 @@ export function ListPicker({
       )}
     </div>
   );
+}
+
+function PendingBadge({
+  pending,
+  total,
+}: {
+  pending: number | undefined;
+  total: number;
+}) {
+  const p = pending ?? 0;
+  if (p > 0) {
+    return (
+      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-semibold text-white">
+        {p}
+      </span>
+    );
+  }
+  return <span className="text-xs text-zinc-400">{total}</span>;
 }
