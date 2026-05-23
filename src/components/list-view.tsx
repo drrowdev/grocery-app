@@ -9,7 +9,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { Loader2, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useLang } from "@/components/lang-provider";
 import { AppHeader } from "@/components/app-header";
 import { VoiceButton } from "@/components/voice-button";
@@ -21,6 +21,7 @@ import { lookupDict } from "@/lib/grocery-dict";
 import { CATEGORY_META } from "@/lib/category-meta";
 import { unitLabel } from "@/lib/i18n";
 import { PullToRefresh } from "@/components/pull-to-refresh";
+import { QtyUnitEditor } from "@/components/qty-unit-editor";
 import {
   editListItem,
   quickAdd,
@@ -403,14 +404,21 @@ export function ListView({
     }
   }
 
-  async function handleQtySet(row: ListItemRow, qty: number) {
-    const clean = Math.max(0.01, Number.isFinite(qty) ? qty : Number(row.qty));
-    if (clean === Number(row.qty)) return;
+  async function handleRowChange(
+    row: ListItemRow,
+    patch: { qty?: number; unit?: string },
+  ) {
+    const next: Partial<Pick<ListItemRow, "qty" | "unit">> = {};
+    if (typeof patch.qty === "number" && Number.isFinite(patch.qty) && patch.qty > 0) {
+      next.qty = patch.qty;
+    }
+    if (typeof patch.unit === "string") next.unit = patch.unit;
+    if (Object.keys(next).length === 0) return;
     setItems((prev) =>
-      prev.map((r) => (r.id === row.id ? { ...r, qty: clean } : r)),
+      prev.map((r) => (r.id === row.id ? { ...r, ...next } : r)),
     );
     try {
-      await updateListItem(row.id, { qty: clean });
+      await updateListItem(row.id, next);
     } catch {
       await refresh();
     }
@@ -645,7 +653,7 @@ export function ListView({
                 showEmoji={false}
                 onToggle={() => handleToggle(row.id, !row.checked)}
                 onRemove={() => handleRemove(row.id)}
-                onQtyChange={(q) => handleQtySet(row, q)}
+                onChange={(patch) => handleRowChange(row, patch)}
                 onRenameSave={(name) => handleRenameSave(row, name)}
               />
             ))}
@@ -669,7 +677,7 @@ export function ListView({
                       showEmoji
                       onToggle={() => handleToggle(row.id, !row.checked)}
                       onRemove={() => handleRemove(row.id)}
-                      onQtyChange={(q) => handleQtySet(row, q)}
+                      onChange={(patch) => handleRowChange(row, patch)}
                       onRenameSave={(name) => handleRenameSave(row, name)}
                     />
                   ))}
@@ -707,7 +715,7 @@ export function ListView({
                     showEmoji={currentListType === "grocery"}
                     onToggle={() => handleToggle(row.id, !row.checked)}
                     onRemove={() => handleRemove(row.id)}
-                    onQtyChange={(q) => handleQtySet(row, q)}
+                    onChange={(patch) => handleRowChange(row, patch)}
                     onRenameSave={(name) => handleRenameSave(row, name)}
                   />
                 ))}
@@ -760,7 +768,7 @@ function ListItemRowComp({
   showEmoji = true,
   onToggle,
   onRemove,
-  onQtyChange,
+  onChange,
   onRenameSave,
 }: {
   row: ListItemRow;
@@ -768,7 +776,7 @@ function ListItemRowComp({
   showEmoji?: boolean;
   onToggle: () => void;
   onRemove: () => void;
-  onQtyChange: (qty: number) => void;
+  onChange: (patch: { qty?: number; unit?: string }) => void;
   onRenameSave: (name: string) => void;
 }) {
   const name = lang === "fi" ? row.item.canonical_fi : row.item.canonical_sv;
@@ -776,18 +784,6 @@ function ListItemRowComp({
 
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(name);
-  const [editingQty, setEditingQty] = useState(false);
-  const [draftQty, setDraftQty] = useState(formatQty(row.qty));
-
-  function commitQty() {
-    setEditingQty(false);
-    const parsed = Number(draftQty.replace(",", "."));
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      setDraftQty(formatQty(row.qty));
-      return;
-    }
-    onQtyChange(parsed);
-  }
 
   return (
     <li className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-2 shadow-sm dark:bg-zinc-900">
@@ -854,43 +850,13 @@ function ListItemRowComp({
         )}
       </div>
 
-      {/* Qty (editable inline) */}
-      <div className="flex items-center gap-1 shrink-0">
-        {editingQty ? (
-          <input
-            type="text"
-            inputMode="decimal"
-            value={draftQty}
-            onChange={(e) => setDraftQty(e.target.value)}
-            onBlur={commitQty}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              else if (e.key === "Escape") {
-                setDraftQty(formatQty(row.qty));
-                setEditingQty(false);
-              }
-            }}
-            autoFocus
-            onFocus={(e) => e.currentTarget.select()}
-            className="w-14 rounded-md border border-emerald-400 bg-white px-1 py-0.5 text-right text-sm tabular-nums text-zinc-900 outline-none focus:ring-2 focus:ring-emerald-500/30 dark:bg-zinc-950 dark:text-zinc-50"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setDraftQty(formatQty(row.qty));
-              setEditingQty(true);
-            }}
-            className="min-w-[3rem] rounded-md px-2 py-1 text-right text-sm tabular-nums text-zinc-700 transition hover:bg-zinc-100 active:scale-95 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            aria-label="Edit quantity"
-          >
-            {formatQty(row.qty)}
-          </button>
-        )}
-        <span className="text-xs text-zinc-500 select-none">
-          {unitLabel(row.unit, lang)}
-        </span>
-      </div>
+      {/* Qty + unit (editable inline) */}
+      <QtyUnitEditor
+        qty={row.qty}
+        unit={row.unit}
+        lang={lang}
+        onChange={onChange}
+      />
 
       {/* Remove */}
       <button

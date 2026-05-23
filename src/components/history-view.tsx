@@ -8,8 +8,12 @@ import { AppHeader } from "@/components/app-header";
 import { capitalizeFirst } from "@/lib/utils";
 import { getItemEmoji } from "@/lib/item-emoji";
 import { categoryDot } from "@/lib/category-colors";
-import { unitLabel } from "@/lib/i18n";
-import { deletePurchase, reorderFromPurchase } from "@/app/history/actions";
+import { QtyUnitEditor } from "@/components/qty-unit-editor";
+import {
+  deletePurchase,
+  reorderFromPurchase,
+  updatePurchase,
+} from "@/app/history/actions";
 import type { HistoryDay, HistoryPurchase } from "@/app/history/page";
 
 function isToday(iso: string): boolean {
@@ -72,6 +76,24 @@ export function HistoryView({
     });
   }
 
+  function changePurchase(
+    purchase: HistoryPurchase,
+    patch: { qty?: number; unit?: string },
+  ) {
+    // Optimistic update
+    setDays((prev) =>
+      prev.map((d) => ({
+        ...d,
+        purchases: d.purchases.map((p) =>
+          p.id === purchase.id ? { ...p, ...patch } : p,
+        ),
+      })),
+    );
+    startTransition(async () => {
+      await updatePurchase(purchase.id, patch);
+    });
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-dvh bg-zinc-50 dark:bg-zinc-950">
       <main className="flex-1 px-5 py-5 mx-auto w-full max-w-2xl">
@@ -129,9 +151,12 @@ export function HistoryView({
                             </p>
                           )}
                         </div>
-                        <span className="text-sm tabular-nums text-zinc-500 shrink-0">
-                          {p.qty} {unitLabel(p.unit, lang)}
-                        </span>
+                        <QtyUnitEditor
+                          qty={p.qty}
+                          unit={p.unit}
+                          lang={lang}
+                          onChange={(patch) => changePurchase(p, patch)}
+                        />
                         <button
                           type="button"
                           onClick={() => reorder(p)}
