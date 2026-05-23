@@ -124,7 +124,7 @@ export function QtyUnitEditor({
         {unitOpen && (
           <div
             ref={popoverRef}
-            className="absolute right-0 top-full mt-1 z-30 grid grid-cols-3 gap-0.5 rounded-lg border border-zinc-200 bg-white p-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+            className="absolute right-0 top-full mt-1 z-30 w-44 grid grid-cols-3 gap-1 rounded-lg border border-zinc-200 bg-white p-1.5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
           >
             {UNITS.map((u) => {
               const active = u === unit;
@@ -136,7 +136,7 @@ export function QtyUnitEditor({
                     setUnitOpen(false);
                     if (u !== unit) onChange({ unit: u });
                   }}
-                  className={`rounded-md px-2 py-1 text-xs transition ${
+                  className={`rounded-md px-2 py-1.5 text-xs text-center transition ${
                     active
                       ? "bg-emerald-600 text-white"
                       : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
