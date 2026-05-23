@@ -502,14 +502,28 @@ export function ListView({
         <div className="hidden md:flex flex-col shrink-0 w-52 self-start">
           <ListRail currentId={currentListId} lists={lists} />
           {currentListType === "grocery" && (
+            <div className="mt-4">
+              <AiSuggestionCard
+                suggestions={aiSuggestions}
+                status={aiStatus}
+                currentListId={currentListId}
+              />
+            </div>
+          )}
+        </div>
+        <main className="flex-1 min-w-0">
+
+        {/* AI suggestion card — mobile placement, above the input.
+            Desktop renders it under the rail (see left column above). */}
+        {currentListType === "grocery" && (
+          <div className="md:hidden mb-3">
             <AiSuggestionCard
               suggestions={aiSuggestions}
               status={aiStatus}
               currentListId={currentListId}
             />
-          )}
-        </div>
-        <main className="flex-1 min-w-0">
+          </div>
+        )}
 
         {/* Input + Add button */}
         <form

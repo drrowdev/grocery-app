@@ -98,7 +98,7 @@ export function AiSuggestionCard({
           : t("aiSubIdle");
 
   return (
-    <aside className="mt-4 w-full">
+    <aside className="w-full">
       <div className="relative overflow-hidden rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-violet-50 p-3 shadow-sm dark:border-emerald-900/40 dark:from-emerald-950/40 dark:via-zinc-900 dark:to-violet-950/30">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.10),transparent_60%),radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.10),transparent_60%)]"
