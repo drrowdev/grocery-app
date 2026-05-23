@@ -88,20 +88,20 @@ export function ListPicker({
         <h1 className="text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50 truncate">
           {currentName}
         </h1>
-        {otherPending > 0 && (
-          <span
-            className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-semibold text-white"
-            aria-label={`${otherPending} items on other lists`}
-            title={`${otherPending} items on other lists`}
-          >
-            {otherPending}
-          </span>
-        )}
-        <ChevronDown
-          className={`h-5 w-5 shrink-0 text-zinc-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
+        <span className="relative shrink-0">
+          <ChevronDown
+            className={`h-5 w-5 text-zinc-400 transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+          {otherPending > 0 && (
+            <span
+              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-zinc-50 dark:ring-zinc-950 animate-pulse"
+              aria-label={`Other lists have ${otherPending} pending items`}
+              title={`Other lists have ${otherPending} pending items`}
+            />
+          )}
+        </span>
       </button>
 
       {open && (
