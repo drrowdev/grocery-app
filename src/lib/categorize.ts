@@ -187,10 +187,37 @@ async function categorize(input: string): Promise<ClaudeItem> {
     };
   }
 
-  // 2. Open Food Facts catalog (~3800 Finnish branded products)
+  // 2. Open Food Facts catalog (~3800 Finnish branded products).
+  // Many OFF entries don't actually have a real Swedish translation —
+  // sv just mirrors fi. When that happens we still take OFF's category
+  // / unit / qty (those are reliable), but call Claude on top to fill
+  // in a proper Finland-Swedish translation.
   const catalogHit = lookupCatalog(input);
   if (catalogHit) {
-    return catalogHit;
+    const fiNorm = catalogHit.canonical_fi.trim().toLowerCase();
+    const svNorm = catalogHit.canonical_sv.trim().toLowerCase();
+    if (fiNorm !== svNorm) {
+      return catalogHit;
+    }
+    // Same string in both languages — augment with Claude translation.
+    try {
+      const fromClaude = await categorizeWithClaude(input);
+      const correctedSv = toFinlandSwedish(fromClaude.canonical_sv);
+      return {
+        ...catalogHit,
+        // Keep OFF's FI canonical (it's the user's term as Finnish
+        // grocery shoppers know it). Use Claude's SV translation if it
+        // actually differs from the FI side; otherwise keep what we had.
+        canonical_sv:
+          correctedSv.trim().toLowerCase() !== fiNorm
+            ? correctedSv
+            : catalogHit.canonical_sv,
+        source_lang: fromClaude.source_lang ?? "fi",
+      };
+    } catch {
+      // If Claude is unavailable, fall back to what OFF gave us.
+      return catalogHit;
+    }
   }
 
   // 3. Claude for the long tail, with FSOB rikssvenska -> FI-SV correction
