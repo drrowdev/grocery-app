@@ -40,7 +40,7 @@ import {
 } from "@/components/ai-suggestion-card";
 
 const LIST_ITEM_SELECT =
-  "id, qty, unit, checked, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
+  "id, qty, unit, checked, checked_at, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))";
 
 let tempCounter = 0;
 function nextTempId(): string {
@@ -217,7 +217,16 @@ export function ListView({
     [items],
   );
   const purchasedItems = useMemo(
-    () => items.filter((r) => r.checked),
+    () =>
+      items
+        .filter((r) => r.checked)
+        .sort((a, b) => {
+          // Most recently checked first. Items without a checked_at
+          // timestamp (legacy rows) fall to the bottom.
+          const aT = a.checked_at ? Date.parse(a.checked_at) : 0;
+          const bT = b.checked_at ? Date.parse(b.checked_at) : 0;
+          return bT - aT;
+        }),
     [items],
   );
 

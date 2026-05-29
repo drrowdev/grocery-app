@@ -35,8 +35,14 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["kevytmaito", "kevytmaitoa", "blå mjölk", "blåmjölk", "sininen maito", "kevyt maito", "lätt mjölk", "lättmjölk"] },
   { fi: "rasvaton maito", sv: "fettfri mjölk", category: "dairy", unit: "l", default_qty: 1,
     aliases: ["rasvaton maito", "rasvatonta maitoa", "fettfri mjölk", "fettfri-mjölk", "ljusblå mjölk", "ljusblåmjölk", "vaaleansininen maito", "skimmed milk", "rasvaton"] },
-  { fi: "kerma", sv: "grädde", category: "dairy", unit: "dl", default_qty: 2,
-    aliases: ["kerma", "kermaa", "grädde", "cream", "kuohukerma", "vispgrädde"] },
+  { fi: "kerma", sv: "matlagningsgrädde", category: "dairy", unit: "dl", default_qty: 2,
+    aliases: ["kerma", "kermaa", "ruokakerma", "matlagningsgrädde", "cream", "cooking cream"] },
+  // Whipping / heavy cream is a distinct product — keep it separate from
+  // plain cooking cream so the user can have both on the list.
+  { fi: "kuohukerma", sv: "vispgrädde", category: "dairy", unit: "dl", default_qty: 2,
+    aliases: ["kuohukerma", "kuohukermaa", "vispgrädde", "vispgradde", "whipping cream", "heavy cream", "double cream", "grädde"] },
+  { fi: "hapankerma", sv: "gräddfil", category: "dairy", unit: "pkt", default_qty: 1,
+    aliases: ["hapankerma", "hapankermaa", "gräddfil", "graddfil", "sour cream", "smetana"] },
   { fi: "ranskankerma", sv: "crème fraîche", category: "dairy", unit: "pkt", default_qty: 1,
     aliases: ["ranskankerma", "ranskan kerma", "crème fraîche", "creme fraiche"] },
   { fi: "jogurtti", sv: "yoghurt", category: "dairy", unit: "pkt", default_qty: 1,
