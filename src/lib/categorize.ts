@@ -31,6 +31,7 @@ export type UnitKey = (typeof UNIT_KEYS)[number];
 const ClaudeItemSchema = z.object({
   canonical_fi: z.string().min(1).max(80),
   canonical_sv: z.string().min(1).max(80),
+  source_lang: z.enum(["fi", "sv", "en", "other"]).optional(),
   category_key: z.enum(CATEGORY_KEYS),
   unit: z.enum(UNIT_KEYS),
   default_qty: z.number().positive().max(10000),
@@ -58,11 +59,14 @@ Finland-Swedish preferred over rikssvenska in canonical_sv:
 - "semla" (FI-SV: bread roll)
 
 Return fields:
-- canonical_fi: user input in standard Finnish (preserve modifiers; only normalize whitespace + case)
-- canonical_sv: Finland-Swedish translation of the FULL phrase (including modifiers)
+- source_lang: "fi" | "sv" | "en" | "other" — the language the user typed in
+- canonical_fi: standard Finnish translation of the phrase including all preserved modifiers
+- canonical_sv: Finland-Swedish translation of the phrase including all preserved modifiers
 - category_key: produce, meat, fish, dairy, bakery, frozen, dry_goods, canned, spices, drinks, snacks, household, hygiene, or other
 - unit: kpl, kg, g, l, dl, ml, pkt
 - default_qty: sensible default (milk: 1 l, eggs: 6 kpl, mince: 1 pkt)
+
+ALWAYS translate to the other language. If the user typed FI, give the full SV translation. If they typed SV, give the full FI translation. If they typed EN, give both FI and SV. Preserve modifiers ('maustamaton', 'frysta', 'färska', '10%', 'luomu') in both translations.
 
 Category guidance (when in doubt):
 - Condiments, sauces, dressings, mayonnaise, ketchup, mustard, vinegar, soy sauce, sriracha, pesto, jam, honey → "canned" (jars/bottles)
@@ -96,13 +100,15 @@ const TOOL_DEFINITION = {
   input_schema: {
     type: "object" as const,
     properties: {
-      canonical_fi: { type: "string", description: "Finnish singular nominative" },
-      canonical_sv: { type: "string", description: "Swedish singular" },
+      source_lang: { type: "string", enum: ["fi", "sv", "en", "other"], description: "Language the user typed in" },
+      canonical_fi: { type: "string", description: "Finnish translation including all preserved modifiers" },
+      canonical_sv: { type: "string", description: "Finland-Swedish translation including all preserved modifiers" },
       category_key: { type: "string", enum: [...CATEGORY_KEYS] },
       unit: { type: "string", enum: [...UNIT_KEYS] },
       default_qty: { type: "number", minimum: 0.001 },
     },
     required: [
+      "source_lang",
       "canonical_fi",
       "canonical_sv",
       "category_key",
@@ -347,16 +353,27 @@ export async function resolveItem(
   // 3. Claude (with FSOB post-correction) for the long tail
   const claudeItem = await categorize(input);
 
-  // Per user request: do NOT rename what the user typed. Claude may
-  // normalise 'Psyllium' to 'psyllium husk' or 'Frysta hallon' to
-  // 'fryst hallon' — neither is wanted. The dict + OFF catalog produce
-  // intentional canonical translations (those paths return before
-  // reaching here). For everything else, preserve the raw input as the
-  // canonical name in BOTH languages, and use Claude only for the
-  // category / unit / qty signals.
-  const preservedCanonical = input.trim();
-  const finalFi = preservedCanonical;
-  const finalSv = preservedCanonical;
+  // Preserve the user's input verbatim in the language they typed in;
+  // use Claude's translation for the other language. Earlier we stored
+  // the raw input in BOTH languages to stop Claude from renaming things
+  // ("Psyllium" -> "psyllium husk"); that also killed the bilingual
+  // translation, which users rely on. So now we trust source_lang +
+  // freeze the source side, but accept Claude's translation on the
+  // other side.
+  const raw = input.trim();
+  let finalFi: string;
+  let finalSv: string;
+  if (claudeItem.source_lang === "sv") {
+    finalSv = raw;
+    finalFi = claudeItem.canonical_fi || raw;
+  } else if (claudeItem.source_lang === "fi") {
+    finalFi = raw;
+    finalSv = claudeItem.canonical_sv || raw;
+  } else {
+    // English / other / unknown: trust both Claude translations.
+    finalFi = claudeItem.canonical_fi || raw;
+    finalSv = claudeItem.canonical_sv || raw;
+  }
 
   const { data: cat } = await supabase
     .from("categories")
