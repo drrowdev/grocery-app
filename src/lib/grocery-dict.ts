@@ -203,6 +203,23 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["hammastahna", "hammastahnaa", "tandkräm", "toothpaste"] },
   { fi: "shampoo", sv: "schampo", category: "hygiene", unit: "pkt", default_qty: 1,
     aliases: ["shampoo", "schampo", "shampoo"] },
+  // Condiments & sauces (live in "canned" — Säilykkeet/Konserver)
+  { fi: "majoneesi", sv: "majonnäs", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["majoneesi", "majoneesia", "majonnäs", "mayo", "mayonnaise"] },
+  { fi: "ketsuppi", sv: "ketchup", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["ketsuppi", "ketsuppia", "ketchup", "tomaattiketsuppi"] },
+  { fi: "sinappi", sv: "senap", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["sinappi", "sinappia", "senap", "mustard", "dijon", "dijonsinappi"] },
+  { fi: "soijakastike", sv: "sojasås", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["soijakastike", "soijaa", "sojasås", "soy sauce", "soya"] },
+  { fi: "hunaja", sv: "honung", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["hunaja", "hunajaa", "honung", "honey"] },
+  { fi: "hillo", sv: "sylt", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["hillo", "hilloa", "sylt", "jam", "marmelad", "marmelaadi"] },
+  { fi: "etikka", sv: "ättika", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["etikka", "etikkaa", "ättika", "vinegar", "balsamico", "viinietikka"] },
+  { fi: "pesto", sv: "pesto", category: "canned", unit: "pkt", default_qty: 1,
+    aliases: ["pesto", "pestoa"] },
 ];
 
 /**

@@ -64,11 +64,29 @@ Return fields:
 - unit: kpl, kg, g, l, dl, ml, pkt
 - default_qty: sensible default (milk: 1 l, eggs: 6 kpl, mince: 1 pkt)
 
+Category guidance (when in doubt):
+- Condiments, sauces, dressings, mayonnaise, ketchup, mustard, vinegar, soy sauce, sriracha, pesto, jam, honey → "canned" (jars/bottles)
+- Bouillon cubes, stock, soup → "canned"
+- Cooking oil, vinegar → "canned"
+- Crackers, chips, chocolate, candy, nuts → "snacks"
+- Coffee, tea, juice, soda, beer, wine, water → "drinks"
+- Sugar, flour, oats, rice, pasta, cereal, lentils, beans → "dry_goods"
+- Yoghurt, cottage cheese, quark, kefir, butter, margarine, cream → "dairy"
+- Salt, pepper, paprika, cumin, dried herbs → "spices"
+- Fresh herbs (dill, basilika, persilja, mint) → "produce"
+- Frozen pizza, frozen berries, ice cream → "frozen"
+- Toilet paper, dish soap, cleaning supplies → "household"
+- Shampoo, toothpaste, soap, deodorant → "hygiene"
+- Use "other" only when nothing above fits.
+
 Examples:
 "10% jauheliha" -> {canonical_fi: "10% jauheliha", canonical_sv: "10% maletkött", category_key: "meat", unit: "pkt", default_qty: 1}
 "luomu kananmuna" -> {canonical_fi: "luomu kananmuna", canonical_sv: "ekologiskt ägg", category_key: "dairy", unit: "kpl", default_qty: 6}
 "rasvaton maito" -> {canonical_fi: "rasvaton maito", canonical_sv: "fettfri mjölk", category_key: "dairy", unit: "l", default_qty: 1}
 "banana" -> {canonical_fi: "banaani", canonical_sv: "banan", category_key: "produce", unit: "kpl", default_qty: 4}
+"felix kruunumajoneesi" -> {canonical_fi: "felix kruunumajoneesi", canonical_sv: "felix kronmajonnäs", category_key: "canned", unit: "dl", default_qty: 3}
+"sinappi" -> {canonical_fi: "sinappi", canonical_sv: "senap", category_key: "canned", unit: "pkt", default_qty: 1}
+"ketsuppi" -> {canonical_fi: "ketsuppi", canonical_sv: "ketchup", category_key: "canned", unit: "pkt", default_qty: 1}
 
 Return one tool call. NEVER output a Finnish word that doesn't exist in real Finnish.`;
 
