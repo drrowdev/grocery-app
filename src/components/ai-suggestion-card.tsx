@@ -17,6 +17,8 @@ export type AiSuggestion = {
   category_key: string | null;
   avg_cycle_days: number | null;
   last_purchased_at: string | null;
+  typical_weekday: number | null;
+  runout_in_days: number | null;
 };
 
 export type AiStatus = {
@@ -129,22 +131,32 @@ export function AiSuggestionCard({
                   lang === "fi" ? s.canonical_fi : s.canonical_sv;
                 const emoji = getItemEmoji(s.canonical_fi, s.category_key);
                 const isAdding = adding.has(s.item_id);
+                const hint = predictionHint(s, lang);
                 return (
                   <li key={s.item_id} className="group flex items-center">
                     <button
                       type="button"
                       onClick={() => void handleAdd(s)}
                       disabled={isAdding || pending}
-                      className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-800 transition hover:bg-white/70 active:scale-[0.98] dark:text-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-50"
+                      className="flex flex-1 items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-800 transition hover:bg-white/70 active:scale-[0.98] dark:text-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-50"
                     >
-                      <span aria-hidden>{emoji}</span>
-                      <span className="flex-1 truncate">
-                        {capitalizeFirst(label)}
+                      <span aria-hidden className="mt-0.5">
+                        {emoji}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate">
+                          {capitalizeFirst(label)}
+                        </span>
+                        {hint && (
+                          <span className="block text-[10px] leading-tight text-zinc-500 truncate">
+                            {hint}
+                          </span>
+                        )}
                       </span>
                       {isAdding ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
+                        <Loader2 className="mt-1 h-3 w-3 animate-spin text-emerald-600" />
                       ) : (
-                        <Plus className="h-3 w-3 text-emerald-600 opacity-60 group-hover:opacity-100" />
+                        <Plus className="mt-1 h-3 w-3 text-emerald-600 opacity-60 group-hover:opacity-100" />
                       )}
                     </button>
                   </li>
@@ -156,4 +168,53 @@ export function AiSuggestionCard({
       </div>
     </aside>
   );
+}
+
+const WEEKDAY_FI = [
+  "sunnuntaisin",
+  "maanantaisin",
+  "tiistaisin",
+  "keskiviikkoisin",
+  "torstaisin",
+  "perjantaisin",
+  "lauantaisin",
+];
+const WEEKDAY_SV = [
+  "söndagar",
+  "måndagar",
+  "tisdagar",
+  "onsdagar",
+  "torsdagar",
+  "fredagar",
+  "lördagar",
+];
+
+/** Build a short prediction subtitle: runout estimate + weekday hint. */
+function predictionHint(s: AiSuggestion, lang: "fi" | "sv"): string | null {
+  const parts: string[] = [];
+  if (s.runout_in_days !== null) {
+    if (s.runout_in_days <= 0) {
+      parts.push(lang === "fi" ? "Loppunut" : "Slut");
+    } else if (s.runout_in_days === 1) {
+      parts.push(lang === "fi" ? "Loppuu pian" : "Tar slut snart");
+    } else {
+      parts.push(
+        lang === "fi"
+          ? `Loppuu noin ${s.runout_in_days} päivässä`
+          : `Tar slut om ca ${s.runout_in_days} dagar`,
+      );
+    }
+  }
+  if (s.typical_weekday !== null) {
+    const day =
+      lang === "fi"
+        ? WEEKDAY_FI[s.typical_weekday]
+        : WEEKDAY_SV[s.typical_weekday];
+    if (day) {
+      parts.push(
+        lang === "fi" ? `yleensä ${day}` : `vanligen på ${day}`,
+      );
+    }
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }

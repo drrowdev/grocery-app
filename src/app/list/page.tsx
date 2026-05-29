@@ -231,7 +231,7 @@ export default async function ListPage({
       supabase
         .from("consumption_profiles")
         .select(
-          "item_id, avg_qty, avg_cycle_days, sample_count, is_recurring, last_purchased_at, next_predicted_date, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key))",
+          "item_id, avg_qty, avg_cycle_days, sample_count, is_recurring, last_purchased_at, next_predicted_date, typical_unit, typical_weekday, daily_rate, estimated_runout_at, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key))",
         )
         .eq("household_id", household.id),
       supabase
@@ -249,6 +249,10 @@ export default async function ListPage({
       is_recurring: boolean | null;
       last_purchased_at: string | null;
       next_predicted_date: string | null;
+      typical_unit: string | null;
+      typical_weekday: number | null;
+      daily_rate: number | null;
+      estimated_runout_at: string | null;
       item: {
         canonical_fi: string;
         canonical_sv: string;
@@ -281,19 +285,32 @@ export default async function ListPage({
         // available; fall back to the item table default (the qty the
         // user has been buying historically beats the first-add default).
         const learnedQty = r.avg_qty ? Number(r.avg_qty) : null;
+        // Prefer the modal unit from purchases over the items table
+        // default — if the user switched from pkt to g, follow the switch.
+        const learnedUnit = r.typical_unit ?? r.item!.unit;
         const suggestedQty =
           learnedQty && learnedQty > 0
-            ? roundForUnit(learnedQty, r.item!.unit)
+            ? roundForUnit(learnedQty, learnedUnit)
             : Number(r.item!.default_qty);
+        // Days until predicted runout. If estimated_runout_at sits in the
+        // past, surface as 0 (overdue).
+        let runoutInDays: number | null = null;
+        if (r.estimated_runout_at) {
+          const diffMs =
+            Date.parse(r.estimated_runout_at) - Date.now();
+          runoutInDays = Math.max(0, Math.round(diffMs / 86400000));
+        }
         return {
           item_id: r.item_id,
           canonical_fi: r.item!.canonical_fi,
           canonical_sv: r.item!.canonical_sv,
-          unit: r.item!.unit,
+          unit: learnedUnit,
           default_qty: suggestedQty,
           category_key: r.item!.category?.key ?? null,
           avg_cycle_days: r.avg_cycle_days,
           last_purchased_at: r.last_purchased_at,
+          typical_weekday: r.typical_weekday ?? null,
+          runout_in_days: runoutInDays,
         };
       });
 
