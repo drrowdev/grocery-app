@@ -359,6 +359,7 @@ export function ListView({
       qty: qtyFromInput ?? dictHit.default_qty,
       unit: dictHit.unit,
       checked: false,
+      checked_at: null,
       note: null,
       item: {
         id: tempItemId,
@@ -466,6 +467,7 @@ export function ListView({
       qty: s.default_qty,
       unit: s.unit,
       checked: false,
+      checked_at: null,
       note: null,
       item: {
         id: s.item_id,
