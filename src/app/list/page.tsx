@@ -8,6 +8,25 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Round a learned average qty to a unit-sensible step so suggestions read
+ * naturally ("3 kpl", "0.5 kg", "200 g") rather than the raw decimal
+ * coming out of avg(). Counts go to the nearest whole number, weights/
+ * volumes round to two decimals.
+ */
+function roundForUnit(qty: number, unit: string): number {
+  if (unit === "kpl" || unit === "pkt") {
+    return Math.max(1, Math.round(qty));
+  }
+  if (unit === "g" || unit === "ml") {
+    // Snap to 10g / 10ml increments — nobody asks for 137g of something.
+    return Math.max(1, Math.round(qty / 10) * 10);
+  }
+  // kg / l / dl — keep one decimal place when fractional.
+  const rounded = Math.round(qty * 10) / 10;
+  return Math.max(0.1, rounded);
+}
+
 export type ListItemRow = {
   id: string;
   qty: number;
@@ -257,16 +276,26 @@ export default async function ListPage({
         (a.next_predicted_date ?? "").localeCompare(b.next_predicted_date ?? ""),
       )
       .slice(0, 6)
-      .map((r) => ({
-        item_id: r.item_id,
-        canonical_fi: r.item!.canonical_fi,
-        canonical_sv: r.item!.canonical_sv,
-        unit: r.item!.unit,
-        default_qty: Number(r.item!.default_qty),
-        category_key: r.item!.category?.key ?? null,
-        avg_cycle_days: r.avg_cycle_days,
-        last_purchased_at: r.last_purchased_at,
-      }));
+      .map((r) => {
+        // Use the LEARNED average qty from the recurrence engine when
+        // available; fall back to the item table default (the qty the
+        // user has been buying historically beats the first-add default).
+        const learnedQty = r.avg_qty ? Number(r.avg_qty) : null;
+        const suggestedQty =
+          learnedQty && learnedQty > 0
+            ? roundForUnit(learnedQty, r.item!.unit)
+            : Number(r.item!.default_qty);
+        return {
+          item_id: r.item_id,
+          canonical_fi: r.item!.canonical_fi,
+          canonical_sv: r.item!.canonical_sv,
+          unit: r.item!.unit,
+          default_qty: suggestedQty,
+          category_key: r.item!.category?.key ?? null,
+          avg_cycle_days: r.avg_cycle_days,
+          last_purchased_at: r.last_purchased_at,
+        };
+      });
 
     const tracked = profiles.length;
     const recurring = profiles.filter((p) => p.is_recurring).length;
