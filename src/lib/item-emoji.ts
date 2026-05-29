@@ -45,6 +45,9 @@ const ITEM_EMOJI: Record<string, string> = {
   peruna: "🥔",
   porkkana: "🥕",
   sipuli: "🧅",
+  punasipuli: "🧅",
+  "röd lök": "🧅",
+  rödlök: "🧅",
   valkosipuli: "🧄",
   tomaatti: "🍅",
   kurkku: "🥒",
@@ -55,6 +58,19 @@ const ITEM_EMOJI: Record<string, string> = {
   appelsiini: "🍊",
   sitruuna: "🍋",
   mansikka: "🍓",
+  // Herbs
+  tilli: "🌿",
+  dill: "🌿",
+  "färsk dill": "🌿",
+  persilja: "🌿",
+  persilja_kihara: "🌿",
+  basilika: "🌿",
+  minttu: "🌿",
+  oregano: "🌿",
+  timjami: "🌿",
+  rosmariini: "🌿",
+  korianteri: "🌿",
+  ruohosipuli: "🌿",
   // Frozen
   pakasteherneet: "🫛",
   pakastepizza: "🍕",
@@ -110,10 +126,16 @@ export function getItemEmoji(
   if (!canonicalFi) return "📦";
   const key = canonicalFi.toLowerCase().trim();
   if (ITEM_EMOJI[key]) return ITEM_EMOJI[key];
+  // Substring match on the canonical name so 'färsk dill', 'kruusperslja',
+  // 'tuore tilli' etc. all resolve to the right herb/produce icon without
+  // needing one entry per inflection.
+  for (const k of Object.keys(ITEM_EMOJI)) {
+    if (key.includes(k)) return ITEM_EMOJI[k];
+  }
   // strip leading modifiers like "10%", "rasvaton" etc. and try base word
   const base = key
     .replace(/^\d+%\s+/, "")
-    .replace(/^(rasvaton|kevyt|luomu|eko|täys-?)\s+/, "")
+    .replace(/^(rasvaton|kevyt|luomu|eko|täys-?|färsk|tuore|fryst|pakaste)\s+/, "")
     .trim();
   if (ITEM_EMOJI[base]) return ITEM_EMOJI[base];
   if (categoryKey && CATEGORY_EMOJI[categoryKey as CategoryKey]) {

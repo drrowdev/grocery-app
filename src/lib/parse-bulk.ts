@@ -34,8 +34,9 @@ Rules:
 - Quantity is null when not specified. NEVER guess a quantity.
 - Unit is one of: kpl, kg, g, l, dl, ml, pkt. Use null when not specified.
 - A "%" token is ALWAYS a descriptor (fat content, alcohol content, etc.) — NEVER a quantity or unit. Keep "X%" attached to the name.
-- Numeric+unit prefixes parse: "500g" => qty: 0.5, unit: "kg". "750ml" => qty: 0.75, unit: "l". "2pkt" => qty: 2, unit: "pkt".
+- Numeric+unit prefixes parse: KEEP the unit the user typed. "500g" => qty: 500, unit: "g" (NOT 0.5 kg). "750ml" => qty: 750, unit: "ml" (NOT 0.75 l). "2dl" => qty: 2, unit: "dl". "2pkt" => qty: 2, unit: "pkt". "3dl" => qty: 3, unit: "dl". Do NOT convert grams to kilograms or millilitres to litres — the user picked the unit on purpose.
 - A bare number with no unit attaches as qty only: "3 malet kött" => qty: 3, unit: null (NOT 3 kg, NOT 3 kpl).
+- Size adjectives (små, stora, pieni, iso, large, small) are part of the name, NOT quantities. "2 små rödlökar" => qty: 2, unit: null (NOT 2 kg).
 - Strip articles, leading numbers, and quantity tokens from the name. PRESERVE descriptive modifiers like fat % ("10%"), luomu/eko, rasvaton/kevyt/täys-, brand names, ecological markers. Keep the item term itself raw — do NOT canonicalize ("maitoa" stays "maitoa", "malet kött" stays "malet kött").
 - Splits: commas, "ja"/"och"/"and", newlines. Never split on spaces. NEVER split on a percent token.
 
@@ -43,12 +44,15 @@ Examples (study these carefully):
 "2 maitoa, ruisleipä, 500g jauheliha" -> [
   {name:"maitoa", qty:2, unit:null},
   {name:"ruisleipä", qty:null, unit:null},
-  {name:"jauheliha", qty:0.5, unit:"kg"}
+  {name:"jauheliha", qty:500, unit:"g"}
 ]
 "3 malet kött" -> [{name:"malet kött", qty:3, unit:null}]
 "2pkt maletkött" -> [{name:"maletkött", qty:2, unit:"pkt"}]
 "1 10% jauheliha" -> [{name:"10% jauheliha", qty:1, unit:null}]
-"500g 17% jauheliha" -> [{name:"17% jauheliha", qty:0.5, unit:"kg"}]
+"500g 17% jauheliha" -> [{name:"17% jauheliha", qty:500, unit:"g"}]
+"300g crème fraîche" -> [{name:"crème fraîche", qty:300, unit:"g"}]
+"3dl felix kruunumajoneesi" -> [{name:"felix kruunumajoneesi", qty:3, unit:"dl"}]
+"2 små rödlökar" -> [{name:"små rödlökar", qty:2, unit:null}]
 "luomu maito" -> [{name:"luomu maito", qty:null, unit:null}]
 "rasvaton maito" -> [{name:"rasvaton maito", qty:null, unit:null}]
 "1l mehua ja 6 munaa" -> [

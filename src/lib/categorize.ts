@@ -113,7 +113,36 @@ export async function categorizeWithClaude(input: string): Promise<ClaudeItem> {
   if (!toolUse || toolUse.type !== "tool_use") {
     throw new Error("Claude did not return a tool_use block");
   }
-  return ClaudeItemSchema.parse(toolUse.input);
+
+  // Defensive coercion: Claude occasionally returns an invented
+  // category_key (e.g. "majoneesi") that isn't in the enum. Snap unknown
+  // values to "other" so the user sees a working result instead of a
+  // Zod validation error in the UI.
+  const raw = toolUse.input as Record<string, unknown>;
+  if (
+    typeof raw.category_key === "string" &&
+    !(CATEGORY_KEYS as readonly string[]).includes(raw.category_key)
+  ) {
+    raw.category_key = "other";
+  }
+  if (
+    typeof raw.unit === "string" &&
+    !(UNIT_KEYS as readonly string[]).includes(raw.unit)
+  ) {
+    raw.unit = "kpl";
+  }
+
+  const parsed = ClaudeItemSchema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+
+  // Last-resort fallback so the user never sees a raw Zod error.
+  return {
+    canonical_fi: typeof raw.canonical_fi === "string" ? raw.canonical_fi : "",
+    canonical_sv: typeof raw.canonical_sv === "string" ? raw.canonical_sv : "",
+    category_key: "other",
+    unit: "kpl",
+    default_qty: typeof raw.default_qty === "number" ? raw.default_qty : 1,
+  };
 }
 
 /**
@@ -157,6 +186,16 @@ async function categorize(input: string): Promise<ClaudeItem> {
     unit === "kg"
   ) {
     unit = "pkt";
+    default_qty = 1;
+  }
+  // Produce items default to "kpl" (count) — onions, apples, lemons etc.
+  // are bought by piece in Finnish supermarkets. Claude sometimes guesses
+  // kg which then renders "2 kg små rödlökar" for "2 små rödlökar".
+  // The parser only converts to non-null unit when the input had an
+  // explicit unit, so flipping kg→kpl here is safe (the upstream qty/unit
+  // override in actions.ts still wins when the user typed "500g sipuli").
+  if (fromClaude.category_key === "produce" && unit === "kg") {
+    unit = "kpl";
     default_qty = 1;
   }
 
