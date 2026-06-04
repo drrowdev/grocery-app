@@ -29,6 +29,22 @@ const ITEM_EMOJI: Record<string, string> = {
   kinkku: "🥓",
   makkara: "🌭",
   pekoni: "🥓",
+  // Sausages & meatballs — explicit so they don't fall back to the
+  // generic meat 🥩 (beef filet). Substring entries so modified forms
+  // ("glutenfria köttbullar", "kalkkunanakki") still resolve.
+  nakit: "🌭",
+  nakki: "🌭",
+  knakki: "🌭",
+  knackkorv: "🌭",
+  knackisar: "🌭",
+  knackis: "🌭",
+  wieneri: "🌭",
+  lihapulla: "🧆",
+  lihapullat: "🧆",
+  pyörykkä: "🧆",
+  köttbullar: "🧆",
+  köttbulle: "🧆",
+  meatball: "🧆",
   // Fish
   lohi: "🐟",
   lohifile: "🐟",

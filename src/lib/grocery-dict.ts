@@ -95,6 +95,12 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["kinkku", "kinkkua", "skinka", "ham"] },
   { fi: "makkara", sv: "korv", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["makkara", "makkaraa", "korv", "sausage", "nakit", "nakkeja"] },
+  { fi: "nakit", sv: "knackkorv", category: "meat", unit: "pkt", default_qty: 1,
+    aliases: ["nakit", "nakki", "nakkeja", "knakki", "knakit", "knackkorv", "knackkorvar",
+              "knackisar", "knackis", "wienerit", "wieneri", "hot dog", "hotdog", "frankfurter"] },
+  { fi: "lihapullat", sv: "köttbullar", category: "meat", unit: "pkt", default_qty: 1,
+    aliases: ["lihapullat", "lihapulla", "lihapullia", "pyörykät", "lihapyörykät",
+              "köttbullar", "köttbulle", "kjøttboller", "meatballs", "meatball"] },
   { fi: "pekoni", sv: "bacon", category: "meat", unit: "pkt", default_qty: 1,
     aliases: ["pekoni", "pekonia", "bacon"] },
 
