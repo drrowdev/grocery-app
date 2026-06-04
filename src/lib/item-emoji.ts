@@ -208,6 +208,25 @@ const ITEM_EMOJI: Record<string, string> = {
   kassi: "🛍️",
   plastpåse: "🛍️",
   plastkasse: "🛍️",
+  // Disposable tableware — substring keys so "engångsgafflar",
+  // "kertakäyttöhaarukat" etc. all resolve without one entry per inflection.
+  haarukat: "🍴",
+  haarukka: "🍴",
+  gaffl: "🍴",
+  gaffel: "🍴",
+  lusika: "🥄",
+  lusikka: "🥄",
+  sked: "🥄",
+  veitse: "🔪",
+  veitsi: "🔪",
+  kniv: "🔪",
+  lasit: "🥤",
+  muki: "🥤",
+  mugg: "🥤",
+  engångsglas: "🥤",
+  lautanen: "🍽️",
+  lautase: "🍽️",
+  tallrik: "🍽️",
 };
 
 const CATEGORY_EMOJI: Record<CategoryKey, string> = {
