@@ -152,6 +152,12 @@ const ITEM_EMOJI: Record<string, string> = {
   // Frozen
   pakasteherneet: "🫛",
   pakastepizza: "🍕",
+  ranskanperunat: "🍟",
+  ranskalaiset: "🍟",
+  ranskikset: "🍟",
+  ranskis: "🍟",
+  "pommes frites": "🍟",
+  franskisar: "🍟",
   // Dry goods
   riisi: "🍚",
   pasta: "🍝",

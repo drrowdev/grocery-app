@@ -79,6 +79,7 @@ Category guidance (when in doubt):
 - Salt, pepper, paprika, cumin, dried herbs → "spices"
 - Fresh herbs (dill, basilika, persilja, mint) → "produce"
 - Frozen pizza, frozen berries, ice cream → "frozen"
+- French fries / pommes frites / ranskanperunat / ranskalaiset / franskisar → "frozen"
 - Toilet paper, dish soap, cleaning supplies → "household"
 - Shampoo, toothpaste, soap, deodorant → "hygiene"
 - Use "other" only when nothing above fits.

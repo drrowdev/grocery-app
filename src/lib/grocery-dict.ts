@@ -155,6 +155,10 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["pakasteherneet", "herneet", "frysta ärtor", "ärtor", "frozen peas"] },
   { fi: "pakastepizza", sv: "fryspizza", category: "frozen", unit: "kpl", default_qty: 1,
     aliases: ["pakastepizza", "fryspizza", "frozen pizza"] },
+  { fi: "ranskanperunat", sv: "pommes frites", category: "frozen", unit: "pkt", default_qty: 1,
+    aliases: ["ranskanperunat", "ranskanperuna", "ranskan perunat", "ranskalaiset",
+              "ranskikset", "ranskis", "pommes frites", "pommes", "franskisar",
+              "french fries", "fries"] },
 
   // Dry goods
   { fi: "riisi", sv: "ris", category: "dry_goods", unit: "pkt", default_qty: 1,
