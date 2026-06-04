@@ -206,6 +206,9 @@ const ITEM_EMOJI: Record<string, string> = {
   talouspaperi: "🧻",
   astianpesuaine: "🧴",
   pyykinpesuaine: "🧺",
+  "kodin putkimies": "🧴",
+  putkimies: "🧴",
+  viemärinavaaja: "🧴",
   hammastahna: "🪥",
   shampoo: "🧴",
   // Bags — keep ahead of the generic household 🧻 category fallback.

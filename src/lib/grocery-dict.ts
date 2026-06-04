@@ -245,6 +245,11 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["astianpesuaine", "diskmedel", "dish soap"] },
   { fi: "pyykinpesuaine", sv: "tvättmedel", category: "household", unit: "pkt", default_qty: 1,
     aliases: ["pyykinpesuaine", "tvättmedel", "laundry detergent"] },
+  // Drain opener — the Mr Muscle "Kodin Putkimies" product, NOT the plumber
+  // profession (rörmokare). Keep canonical as the product name.
+  { fi: "kodin putkimies", sv: "rörrensare", category: "household", unit: "pkt", default_qty: 1,
+    aliases: ["putkimies", "kodin putkimies", "viemärinavaaja", "viemärinaukaisija",
+      "rörrensare", "propplösare", "avloppsrens", "mr muscle putkimies"] },
   { fi: "hammastahna", sv: "tandkräm", category: "hygiene", unit: "pkt", default_qty: 1,
     aliases: ["hammastahna", "hammastahnaa", "tandkräm", "toothpaste"] },
   { fi: "shampoo", sv: "schampo", category: "hygiene", unit: "pkt", default_qty: 1,

@@ -82,6 +82,7 @@ Category guidance (when in doubt):
 - French fries / pommes frites / ranskanperunat / ranskalaiset / franskisar → "frozen"
 - Meatballs (lihapullat, köttbullar, pyörykät) and sausages (makkara, nakit, knakit, knackkorv) → "meat", even with modifiers like "glutenfria" / "gluteeniton"
 - Ice cream of any flavour (jäätelö, glass, vaniljglass, chokladglass, jordgubbsglass) → "frozen"
+- "Putkimies" / "Kodin putkimies" is the Mr Muscle drain-opener cleaning product → "household". Never translate it to the plumber profession (rörmokare).
 - Toilet paper, dish soap, cleaning supplies → "household"
 - Shampoo, toothpaste, soap, deodorant → "hygiene"
 - Use "other" only when nothing above fits.
