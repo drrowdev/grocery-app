@@ -55,12 +55,22 @@ export function lookupCatalog(text: string): CatalogHit | null {
   const exact = data.entries[q];
   let hit: CatalogEntry | null = exact ?? null;
 
-  // Prefix fallback (only for queries 4+ chars to avoid noise)
+  // Prefix fallback (only for queries 4+ chars to avoid noise).
+  //
+  // We only trim trailing noise off the *user's* query (q starts with a
+  // catalog key, e.g. "oltermanni 500g" -> "oltermanni"). We deliberately
+  // do NOT expand a short query into a longer catalog entry: that let a
+  // generic word like "äppel" grab a branded product such as
+  // "äppel-tranbär ekomysli". A matched key must also end on a word
+  // boundary so a mid-word prefix ("kanelipulla" vs "kanel") never matches.
   if (!hit && q.length >= 4) {
     for (const k of Object.keys(data.entries)) {
-      if (k.startsWith(q) || q.startsWith(k)) {
-        hit = data.entries[k];
-        break;
+      if (k.length >= 4 && q.startsWith(k)) {
+        const rest = q.slice(k.length);
+        if (rest === "" || /^[\s\-0-9]/.test(rest)) {
+          hit = data.entries[k];
+          break;
+        }
       }
     }
   }

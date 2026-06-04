@@ -178,6 +178,14 @@ const ITEM_EMOJI: Record<string, string> = {
   pyykinpesuaine: "🧺",
   hammastahna: "🪥",
   shampoo: "🧴",
+  // Bags — keep ahead of the generic household 🧻 category fallback.
+  muovipussi: "🛍️",
+  muovikassi: "🛍️",
+  ostoskassi: "🛍️",
+  kestokassi: "🛍️",
+  kassi: "🛍️",
+  plastpåse: "🛍️",
+  plastkasse: "🛍️",
 };
 
 const CATEGORY_EMOJI: Record<CategoryKey, string> = {
