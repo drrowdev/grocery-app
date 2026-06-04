@@ -81,6 +81,7 @@ Category guidance (when in doubt):
 - Frozen pizza, frozen berries, ice cream → "frozen"
 - French fries / pommes frites / ranskanperunat / ranskalaiset / franskisar → "frozen"
 - Meatballs (lihapullat, köttbullar, pyörykät) and sausages (makkara, nakit, knakit, knackkorv) → "meat", even with modifiers like "glutenfria" / "gluteeniton"
+- Ice cream of any flavour (jäätelö, glass, vaniljglass, chokladglass, jordgubbsglass) → "frozen"
 - Toilet paper, dish soap, cleaning supplies → "household"
 - Shampoo, toothpaste, soap, deodorant → "hygiene"
 - Use "other" only when nothing above fits.

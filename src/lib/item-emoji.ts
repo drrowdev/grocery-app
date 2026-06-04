@@ -168,6 +168,14 @@ const ITEM_EMOJI: Record<string, string> = {
   // Frozen
   pakasteherneet: "🫛",
   pakastepizza: "🍕",
+  // Ice cream — exact keys so flavoured forms win over the berry icons
+  // (e.g. "mansikkajäätelö" must be 🍨, not 🍓 from a "mansikka" substring).
+  "jäätelö": "🍨",
+  vaniljajäätelö: "🍨",
+  suklaajäätelö: "🍨",
+  mansikkajäätelö: "🍨",
+  glass: "🍨",
+  glassar: "🍨",
   ranskanperunat: "🍟",
   ranskalaiset: "🍟",
   ranskikset: "🍟",

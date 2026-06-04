@@ -154,7 +154,7 @@ export const GROCERY_DICT: DictEntry[] = [
   { fi: "sitruuna", sv: "citron", category: "produce", unit: "kpl", default_qty: 2,
     aliases: ["sitruuna", "sitruunoita", "citron", "lemon"] },
   { fi: "mansikka", sv: "jordgubbe", category: "produce", unit: "pkt", default_qty: 1,
-    aliases: ["mansikka", "mansikoita", "jordgubbe", "jordgubbar", "strawberry", "strawberries"] },
+    aliases: ["mansikka", "mansikoita", "jordgubb", "jordgubbe", "jordgubbar", "strawberry", "strawberries"] },
 
   // Frozen
   { fi: "pakasteherneet", sv: "frysta ärtor", category: "frozen", unit: "pkt", default_qty: 1,
@@ -165,6 +165,17 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["ranskanperunat", "ranskanperuna", "ranskan perunat", "ranskalaiset",
               "ranskikset", "ranskis", "pommes frites", "pommes", "franskisar",
               "french fries", "fries"] },
+  // Ice cream (jäätelö / glass) → frozen. Generic + common flavours, so
+  // "jordgubbsglass" doesn't fall through to a branded dairy catalog hit.
+  { fi: "jäätelö", sv: "glass", category: "frozen", unit: "pkt", default_qty: 1,
+    aliases: ["jäätelö", "jäätelöä", "glass", "glassar", "ice cream", "icecream", "glace"] },
+  { fi: "vaniljajäätelö", sv: "vaniljglass", category: "frozen", unit: "pkt", default_qty: 1,
+    aliases: ["vaniljajäätelö", "vaniljjäätelö", "vaniljglass", "vanilj glass", "vanilla ice cream"] },
+  { fi: "suklaajäätelö", sv: "chokladglass", category: "frozen", unit: "pkt", default_qty: 1,
+    aliases: ["suklaajäätelö", "suklaajäätelöä", "chokladglass", "choklad glass", "chocolate ice cream"] },
+  { fi: "mansikkajäätelö", sv: "jordgubbsglass", category: "frozen", unit: "pkt", default_qty: 1,
+    aliases: ["mansikkajäätelö", "mansikkajäätelöä", "jordgubbsglass", "jordgubbglass",
+              "jordgubb glass", "strawberry ice cream"] },
 
   // Dry goods
   { fi: "riisi", sv: "ris", category: "dry_goods", unit: "pkt", default_qty: 1,

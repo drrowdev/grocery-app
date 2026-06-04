@@ -39,6 +39,7 @@ Rules:
 - Size adjectives (små, stora, pieni, iso, large, small) are part of the name, NOT quantities. "2 små rödlökar" => qty: 2, unit: null (NOT 2 kg).
 - Strip articles, leading numbers, and quantity tokens from the name. PRESERVE descriptive modifiers like fat % ("10%"), luomu/eko, rasvaton/kevyt/täys-, brand names, ecological markers. Keep the item term itself raw — do NOT canonicalize ("maitoa" stays "maitoa", "malet kött" stays "malet kött").
 - Splits: commas, "ja"/"och"/"and", newlines. Never split on spaces. NEVER split on a percent token.
+- Distribute a HEAD NOUN over a parenthetical or listed set of flavours/variants. "3 olika glassar (choklad, vanilj, jordgubb)" means three ice creams — attach the head noun "glass" to each flavour: "chokladglass", "vaniljglass", "jordgubbsglass". Likewise "2 jogurttia (vanilja, mansikka)" -> "vaniljajogurtti", "mansikkajogurtti". Drop count/variety words like "olika", "erilaista", "different", "sorter", "kinds" — "3 olika" means one of each kind, so qty is null, NOT 3.
 
 Examples (study these carefully):
 "2 maitoa, ruisleipä, 500g jauheliha" -> [
@@ -60,6 +61,11 @@ Examples (study these carefully):
   {name:"munaa", qty:6, unit:null}
 ]
 "crème fraîche" -> [{name:"crème fraîche", qty:null, unit:null}]
+"3 olika glassar (choklad, vanilj, jordgubb)" -> [
+  {name:"chokladglass", qty:null, unit:null},
+  {name:"vaniljglass", qty:null, unit:null},
+  {name:"jordgubbsglass", qty:null, unit:null}
+]
 "banana" -> [{name:"banana", qty:null, unit:null}]`;
 
 const TOOL = {
