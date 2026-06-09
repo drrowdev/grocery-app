@@ -83,6 +83,7 @@ Category guidance (when in doubt):
 - Meatballs (lihapullat, köttbullar, pyörykät) and sausages (makkara, nakit, knakit, knackkorv) → "meat", even with modifiers like "glutenfria" / "gluteeniton"
 - Ice cream of any flavour (jäätelö, glass, vaniljglass, chokladglass, jordgubbsglass) → "frozen"
 - "Putkimies" / "Kodin putkimies" is the Mr Muscle drain-opener cleaning product → "household". Never translate it to the plumber profession (rörmokare).
+- "Suklaahippu" / "suklaahiput" (any modifier, e.g. tumma/maito) are baking chocolate chips → "dry_goods". Never translate to a chocolate biscuit/macaroon (chokladbiskvi).
 - Toilet paper, dish soap, cleaning supplies → "household"
 - Shampoo, toothpaste, soap, deodorant → "hygiene"
 - Use "other" only when nothing above fits.

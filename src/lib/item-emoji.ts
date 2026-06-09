@@ -189,6 +189,7 @@ const ITEM_EMOJI: Record<string, string> = {
   kaurahiutaleet: "🥣",
   müsli: "🥣",
   sokeri: "🍬",
+  suklaahippu: "🍫",
   suola: "🧂",
   mustapippuri: "🧂",
   rypsiöljy: "🫒",

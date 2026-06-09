@@ -190,6 +190,10 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["müsli", "mysli", "muesli", "granola"] },
   { fi: "sokeri", sv: "socker", category: "dry_goods", unit: "pkt", default_qty: 1,
     aliases: ["sokeri", "sokeria", "socker", "sugar"] },
+  // Chocolate chips for baking — NOT chocolate biscuits/macaroons (chokladbiskvi).
+  { fi: "suklaahippu", sv: "chokladknappar", category: "dry_goods", unit: "pkt", default_qty: 1,
+    aliases: ["suklaahippu", "suklaahiput", "suklaahippuja", "tumma suklaahippu",
+      "maitosuklaahippu", "chokladknappar", "chokladchips", "chocolate chips"] },
   { fi: "suola", sv: "salt", category: "spices", unit: "pkt", default_qty: 1,
     aliases: ["suola", "suolaa", "salt"] },
   { fi: "mustapippuri", sv: "svartpeppar", category: "spices", unit: "pkt", default_qty: 1,
