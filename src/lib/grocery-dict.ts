@@ -191,9 +191,15 @@ export const GROCERY_DICT: DictEntry[] = [
   { fi: "sokeri", sv: "socker", category: "dry_goods", unit: "pkt", default_qty: 1,
     aliases: ["sokeri", "sokeria", "socker", "sugar"] },
   // Chocolate chips for baking — NOT chocolate biscuits/macaroons (chokladbiskvi).
+  // Keep the dark/light/milk variants distinct so each is its own list item.
   { fi: "suklaahippu", sv: "chokladknappar", category: "dry_goods", unit: "pkt", default_qty: 1,
-    aliases: ["suklaahippu", "suklaahiput", "suklaahippuja", "tumma suklaahippu",
-      "maitosuklaahippu", "chokladknappar", "chokladchips", "chocolate chips"] },
+    aliases: ["suklaahippu", "suklaahiput", "suklaahippuja", "chokladknappar", "chokladchips", "chocolate chips"] },
+  { fi: "tumma suklaahippu", sv: "mörka chokladknappar", category: "dry_goods", unit: "pkt", default_qty: 1,
+    aliases: ["tumma suklaahippu", "tummasuklaahippu", "mörka chokladknappar", "mörk chokladchips", "dark chocolate chips"] },
+  { fi: "vaalea suklaahippu", sv: "ljusa chokladknappar", category: "dry_goods", unit: "pkt", default_qty: 1,
+    aliases: ["vaalea suklaahippu", "valkosuklaahippu", "valkoinen suklaahippu", "ljusa chokladknappar", "vita chokladknappar", "white chocolate chips"] },
+  { fi: "maitosuklaahippu", sv: "mjölkchokladknappar", category: "dry_goods", unit: "pkt", default_qty: 1,
+    aliases: ["maitosuklaahippu", "maitosuklaahiput", "mjölkchokladknappar", "milk chocolate chips"] },
   { fi: "suola", sv: "salt", category: "spices", unit: "pkt", default_qty: 1,
     aliases: ["suola", "suolaa", "salt"] },
   { fi: "mustapippuri", sv: "svartpeppar", category: "spices", unit: "pkt", default_qty: 1,
