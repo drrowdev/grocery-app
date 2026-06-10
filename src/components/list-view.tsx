@@ -102,6 +102,24 @@ export function ListView({
     if (data) setItems(data as unknown as ListItemRow[]);
   }, [listId]);
 
+  // Coalesce realtime-driven full-route refreshes: a burst of events (e.g.
+  // clearing many checked items at once, or another household member doing a
+  // bulk add) collapses into a single router.refresh() ~1.2s after the last
+  // event, instead of one full server re-render per event.
+  const routeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRouteRefresh = useCallback(() => {
+    if (routeRefreshTimer.current) clearTimeout(routeRefreshTimer.current);
+    routeRefreshTimer.current = setTimeout(() => {
+      routeRefreshTimer.current = null;
+      router.refresh();
+    }, 1200);
+  }, [router]);
+  useEffect(() => {
+    return () => {
+      if (routeRefreshTimer.current) clearTimeout(routeRefreshTimer.current);
+    };
+  }, []);
+
   // Realtime sync across all lists in the household. We subscribe without
   // a filter — Supabase RLS already restricts the events we receive to
   // rows the current user is allowed to see (i.e. their households). When
@@ -151,7 +169,7 @@ export function ListView({
           // rail counts + visible items always reconcile.
           if (payload.eventType === "DELETE") {
             void refresh();
-            router.refresh();
+            scheduleRouteRefresh();
             return;
           }
           const row = (payload.new ?? payload.old) as {
@@ -161,13 +179,13 @@ export function ListView({
           if (!evtListId) {
             // Unknown list id — be safe and refresh both.
             void refresh();
-            router.refresh();
+            scheduleRouteRefresh();
             return;
           }
           if (evtListId === listId) {
             void refresh();
           } else if (visibleListIds.has(evtListId)) {
-            router.refresh();
+            scheduleRouteRefresh();
           }
         },
       )
@@ -178,7 +196,7 @@ export function ListView({
           if (process.env.NODE_ENV !== "production") {
             console.log("[rt] shopping_lists", payload.eventType);
           }
-          router.refresh();
+          scheduleRouteRefresh();
         },
       )
       .subscribe((status, err) => {
@@ -191,7 +209,7 @@ export function ListView({
       mounted = false;
       void supabase.removeChannel(channel);
     };
-  }, [listId, refresh, router, visibleListIds]);
+  }, [listId, refresh, scheduleRouteRefresh, visibleListIds]);
 
   // When the tab/PWA returns to the foreground after being backgrounded,
   // the realtime websocket may have missed events while sleeping. Always

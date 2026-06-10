@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type Household = {
@@ -9,17 +10,21 @@ export type Household = {
 
 /**
  * Returns the authenticated user's first household (by joined_at), including
- * their role. For MVP a user has exactly one household.
+ * their role. For MVP a user has exactly one household. Wrapped in React
+ * `cache()` so repeated calls within a single server request (page render +
+ * any server actions) share one query instead of re-hitting the DB.
  */
-export async function getCurrentHousehold(): Promise<Household | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("household_members")
-    .select("role, households(id, name)")
-    .order("joined_at", { ascending: true })
-    .limit(1);
-  const row = data?.[0];
-  if (!row?.households) return null;
-  const h = row.households as unknown as { id: string; name: string };
-  return { id: h.id, name: h.name, role: row.role as "owner" | "member" };
-}
+export const getCurrentHousehold = cache(
+  async (): Promise<Household | null> => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("household_members")
+      .select("role, households(id, name)")
+      .order("joined_at", { ascending: true })
+      .limit(1);
+    const row = data?.[0];
+    if (!row?.households) return null;
+    const h = row.households as unknown as { id: string; name: string };
+    return { id: h.id, name: h.name, role: row.role as "owner" | "member" };
+  },
+);
