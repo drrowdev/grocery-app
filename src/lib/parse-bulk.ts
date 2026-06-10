@@ -91,18 +91,71 @@ const TOOL = {
   },
 };
 
+// Tokens that signal multiple items or descriptor semantics ("%", "ja"/
+// "och"/"and", parentheses) that the LLM parser handles more reliably. A
+// single grocery item rarely contains these.
+const MULTI_RE = /[,\n%()]/;
+const CONJUNCTION_RE = /(?:^|\s)(?:ja|och|and)(?:\s|$)/i;
+
+function wordCount(s: string): number {
+  return s.trim().split(/\s+/).length;
+}
+
+/**
+ * Resolve the common single-item inputs locally — including a leading
+ * quantity and/or unit ("2 maitoa", "500g jauheliha", "3dl kerma") — so
+ * the add path doesn't pay for an LLM round-trip. Returns null (forcing the
+ * Claude fallback) whenever the input might contain multiple items or
+ * descriptor semantics the local heuristics can't safely handle.
+ */
+function tryLocalParse(trimmed: string): ParsedBulkItem[] | null {
+  if (MULTI_RE.test(trimmed) || CONJUNCTION_RE.test(trimmed)) return null;
+
+  const unitAlt = UNIT_KEYS.join("|");
+
+  // Leading quantity + unit: "500g jauheliha", "3dl kerma", "2 pkt maitoa".
+  const qtyUnit = trimmed.match(
+    new RegExp(`^(\\d+(?:[.,]\\d+)?)\\s*(${unitAlt})\\s+(.+)$`, "i"),
+  );
+  if (qtyUnit) {
+    const name = qtyUnit[3].trim();
+    if (name && !/\d/.test(name) && wordCount(name) <= 4) {
+      return [
+        {
+          name,
+          qty: Number(qtyUnit[1].replace(",", ".")),
+          unit: qtyUnit[2].toLowerCase() as UnitKey,
+        },
+      ];
+    }
+    return null;
+  }
+
+  // Leading bare quantity, no unit: "2 maitoa", "3 malet kött",
+  // "2 små rödlökar" (the size adjective stays part of the name).
+  const qtyOnly = trimmed.match(/^(\d+(?:[.,]\d+)?)\s+(.+)$/);
+  if (qtyOnly) {
+    const name = qtyOnly[2].trim();
+    if (name && !/\d/.test(name) && wordCount(name) <= 4) {
+      return [{ name, qty: Number(qtyOnly[1].replace(",", ".")), unit: null }];
+    }
+    return null;
+  }
+
+  // No digits at all — a single simple item name.
+  if (!/\d/.test(trimmed) && wordCount(trimmed) <= 4) {
+    return [{ name: trimmed, qty: null, unit: null }];
+  }
+
+  return null;
+}
+
 export async function parseBulkInput(text: string): Promise<ParsedBulkItem[]> {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
-  // Fast path: short token, no commas, no digits, no % token
-  if (
-    !/[,\n%]/.test(trimmed) &&
-    !/\d/.test(trimmed) &&
-    trimmed.split(/\s+/).length <= 3
-  ) {
-    return [{ name: trimmed, qty: null, unit: null }];
-  }
+  const local = tryLocalParse(trimmed);
+  if (local) return local;
 
   const anthropic = getAnthropic();
   const response = await anthropic.messages.create({

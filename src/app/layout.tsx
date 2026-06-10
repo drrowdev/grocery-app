@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/components/lang-provider";
 import { IosInstallHint } from "@/components/ios-install-hint";
+import { SwRegister } from "@/components/sw-register";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,6 +56,7 @@ export default function RootLayout({
           {children}
           <IosInstallHint />
         </LangProvider>
+        <SwRegister />
       </body>
     </html>
   );
