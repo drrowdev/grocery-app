@@ -194,12 +194,20 @@ export function ListView({
   }, [listId, refresh, router, visibleListIds]);
 
   // When the tab/PWA returns to the foreground after being backgrounded,
-  // the realtime websocket may have missed events while sleeping. Force
-  // a refresh so the visible list catches up.
+  // the realtime websocket may have missed events while sleeping. Always
+  // re-fetch the visible list cheaply, but throttle the heavy full-route
+  // refresh (which re-runs the entire dynamic server render — auth + all
+  // queries + the AI join) to at most once per minute. Returning to the app
+  // is a very frequent event on mobile, so an unconditional router.refresh()
+  // here made every refocus pay a full server round-trip.
+  const lastFullRefresh = useRef(0);
   useEffect(() => {
     function onVisible() {
-      if (document.visibilityState === "visible") {
-        void refresh();
+      if (document.visibilityState !== "visible") return;
+      void refresh();
+      const now = Date.now();
+      if (now - lastFullRefresh.current > 60000) {
+        lastFullRefresh.current = now;
         router.refresh();
       }
     }

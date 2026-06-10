@@ -156,30 +156,49 @@ export default async function ListPage({
   let aiStatus: AiStatus = { tracked: 0, recurring: 0, dueNow: 0 };
 
   try {
-    const { data, error } = await supabase
-      .from("list_items")
-      .select(
-        "id, qty, unit, checked, checked_at, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))",
-      )
-      .eq("list_id", selected.id)
-      .order("added_at");
+    const horizon = new Date(Date.now() + 2 * 86400000).toISOString();
 
-    if (error) throw error;
-    rows = (data ?? []) as unknown as ListItemRow[];
+    // Batch every independent query for this render into one parallel round
+    // instead of running them sequentially: the selected list's items, the
+    // same-type item ids (for the context-aware chip strip), the recurrence-
+    // engine profiles, and the "on any active list" set used to hide already-
+    // listed items.
+    const [listItemsRes, sameTypeRes, profilesRes, onListsRes] =
+      await Promise.all([
+        supabase
+          .from("list_items")
+          .select(
+            "id, qty, unit, checked, checked_at, note, item:items(id, canonical_fi, canonical_sv, category:categories(key, name_fi, name_sv, icon, sort_order))",
+          )
+          .eq("list_id", selected.id)
+          .order("added_at"),
+        supabase
+          .from("list_items")
+          .select("item_id, shopping_lists!inner(type, household_id)")
+          .eq("shopping_lists.household_id", household.id)
+          .eq("shopping_lists.type", selected.type),
+        supabase
+          .from("consumption_profiles")
+          .select(
+            "item_id, avg_qty, avg_cycle_days, sample_count, is_recurring, last_purchased_at, next_predicted_date, typical_unit, typical_weekday, daily_rate, estimated_runout_at, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key))",
+          )
+          .eq("household_id", household.id),
+        supabase
+          .from("list_items")
+          .select("item_id, shopping_lists!inner(household_id, status)")
+          .eq("shopping_lists.household_id", household.id)
+          .eq("shopping_lists.status", "active"),
+      ]);
+
+    if (listItemsRes.error) throw listItemsRes.error;
+    rows = (listItemsRes.data ?? []) as unknown as ListItemRow[];
 
     const onListIds = new Set(rows.map((r) => r.item.id));
-
     // Item ids that have ever appeared on a list of this same type in this
-    // household. This is what makes the chip strip context-aware: a grocery
-    // list never suggests medicine, a pharmacy list never suggests milk —
-    // even if the item table has a category set for it.
-    const { data: sameTypeRows } = await supabase
-      .from("list_items")
-      .select("item_id, shopping_lists!inner(type, household_id)")
-      .eq("shopping_lists.household_id", household.id)
-      .eq("shopping_lists.type", selected.type);
+    // household — what makes the chip strip context-aware (a grocery list
+    // never suggests medicine, a pharmacy list never suggests milk).
     const sameTypeIds = new Set(
-      (sameTypeRows ?? []).map((r) => r.item_id as string),
+      (sameTypeRes.data ?? []).map((r) => r.item_id as string),
     );
 
     type CatalogRow = {
@@ -223,23 +242,9 @@ export default async function ListPage({
         default_qty: Number(r.default_qty),
         category: r.category,
       }));
-    // AI proactive suggestions + status. We always show the card so the
-    // user sees what the recurrence engine is doing, even before it has
-    // anything to suggest.
-    const horizon = new Date(Date.now() + 2 * 86400000).toISOString();
-    const [profilesRes, onListsRes] = await Promise.all([
-      supabase
-        .from("consumption_profiles")
-        .select(
-          "item_id, avg_qty, avg_cycle_days, sample_count, is_recurring, last_purchased_at, next_predicted_date, typical_unit, typical_weekday, daily_rate, estimated_runout_at, item:items(canonical_fi, canonical_sv, unit, default_qty, category:categories(key))",
-        )
-        .eq("household_id", household.id),
-      supabase
-        .from("list_items")
-        .select("item_id, shopping_lists!inner(household_id, status)")
-        .eq("shopping_lists.household_id", household.id)
-        .eq("shopping_lists.status", "active"),
-    ]);
+    // AI proactive suggestions + status (fetched above in the batched
+    // Promise.all). We always show the card so the user sees what the
+    // recurrence engine is doing, even before it has anything to suggest.
 
     type ProfileRow = {
       item_id: string;
