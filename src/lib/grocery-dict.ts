@@ -125,6 +125,10 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["kahvileipä", "kaffebröd", "pulla", "pullaa"] },
   { fi: "näkkileipä", sv: "knäckebröd", category: "bakery", unit: "pkt", default_qty: 1,
     aliases: ["näkkileipä", "näkkileipää", "knäckebröd"] },
+  { fi: "riisikakku", sv: "riskaka", category: "bakery", unit: "pkt", default_qty: 1,
+    aliases: ["riisikakku", "riisikakut", "riisikakkuja", "riskaka", "riskakor", "rice cake", "rice cakes"] },
+  { fi: "gluteeniton tumma leipä", sv: "glutenfritt mörkt bröd", category: "bakery", unit: "kpl", default_qty: 1,
+    aliases: ["gluteeniton tumma leipä", "glutenfritt mörkt bröd"] },
   { fi: "sämpylä", sv: "semla", category: "bakery", unit: "kpl", default_qty: 4,
     aliases: ["sämpylä", "sämpylöitä", "semla", "semlor", "bread roll"] },
 
@@ -155,6 +159,12 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["sitruuna", "sitruunoita", "citron", "lemon"] },
   { fi: "mansikka", sv: "jordgubbe", category: "produce", unit: "pkt", default_qty: 1,
     aliases: ["mansikka", "mansikoita", "jordgubb", "jordgubbe", "jordgubbar", "strawberry", "strawberries"] },
+  { fi: "tuoreet mansikat", sv: "färska jordgubbar", category: "produce", unit: "pkt", default_qty: 1,
+    aliases: ["tuoreet mansikat", "färska jordgubbar"] },
+  { fi: "tuoreet mustikat", sv: "färska blåbär", category: "produce", unit: "pkt", default_qty: 1,
+    aliases: ["tuoreet mustikat", "mustikat", "mustikka", "mustikkaa", "färska blåbär", "blåbär", "blueberries", "blueberry"] },
+  { fi: "tuore tilli", sv: "färsk dill", category: "produce", unit: "pkt", default_qty: 1,
+    aliases: ["tuore tilli", "tilli", "tilliä", "färsk dill", "dill", "fresh dill"] },
 
   // Frozen
   { fi: "pakasteherneet", sv: "frysta ärtor", category: "frozen", unit: "pkt", default_qty: 1,

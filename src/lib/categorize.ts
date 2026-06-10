@@ -50,7 +50,7 @@ PRESERVE the user's input shape closely. Do NOT strip these qualifiers when they
 - Brand-like tokens
 - Color/type modifiers: "valkoinen", "punainen", "vit", "röd"
 
-Output canonical_fi as close to the user's Finnish input as possible (just lowercase + trim). Output canonical_sv as the Finland-Swedish translation of the FULL phrase including any preserved modifiers.
+canonical_fi MUST always be real, standard Finnish and canonical_sv MUST always be Finland-Swedish — regardless of which language the user typed in. Keep the side that matches the user's input language close to their wording (lowercase + trim), and TRANSLATE the other side into proper language. NEVER copy a Swedish phrase into canonical_fi, and never copy a Finnish phrase into canonical_sv. For example, Swedish input "färska blåbär" → canonical_fi: "tuoreet mustikat", canonical_sv: "färska blåbär". Preserve any modifiers in both.
 
 Finland-Swedish preferred over rikssvenska in canonical_sv:
 - "maletkött" (FI-SV, single word as used in Finland) — NOT "malet kött", NOT "köttfärs" (rikssvenska)
