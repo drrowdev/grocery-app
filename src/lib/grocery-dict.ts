@@ -291,12 +291,12 @@ export const GROCERY_DICT: DictEntry[] = [
     aliases: ["etikka", "etikkaa", "ättika", "vinegar", "balsamico", "viinietikka"] },
   { fi: "pesto", sv: "pesto", category: "canned", unit: "pkt", default_qty: 1,
     aliases: ["pesto", "pestoa"] },
-  // Hot sauces — condiments, live in "canned" with the other sauces. Sriracha
-  // must be explicit so "orange sriracha" doesn't match the catalog's
-  // 'orange' (a soft drink) and land in drinks.
+  // Plain "sriracha" (no flavour) is a hot sauce → canned. Flavoured/typed
+  // variants like "orange sriracha" are deliberately NOT aliased here: they
+  // must stay distinct items with their full name, so they fall through to
+  // Claude (which keeps the name and still categorizes them as a sauce).
   { fi: "sriracha", sv: "sriracha", category: "canned", unit: "pkt", default_qty: 1,
-    aliases: ["sriracha", "orange sriracha", "sriracha-kastike", "srirachakastike",
-      "hot sauce", "chilikastike", "chilisås", "chilikastiketta"] },
+    aliases: ["sriracha", "sriracha-kastike", "srirachakastike"] },
 ];
 
 /**

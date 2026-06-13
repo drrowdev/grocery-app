@@ -62,12 +62,15 @@ export function lookupCatalog(text: string): CatalogHit | null {
   // do NOT expand a short query into a longer catalog entry: that let a
   // generic word like "äppel" grab a branded product such as
   // "äppel-tranbär ekomysli". A matched key must also end on a word
-  // boundary so a mid-word prefix ("kanelipulla" vs "kanel") never matches.
+  // boundary, and the trailing remainder must be pure quantity/packaging
+  // noise (a number, optionally after spaces) — never another word. That
+  // stops "orange sriracha" from trimming " sriracha" and matching the
+  // catalog's "orange" (a soft drink).
   if (!hit && q.length >= 4) {
     for (const k of Object.keys(data.entries)) {
       if (k.length >= 4 && q.startsWith(k)) {
         const rest = q.slice(k.length);
-        if (rest === "" || /^[\s\-0-9]/.test(rest)) {
+        if (rest === "" || /^[\s-]*\d/.test(rest)) {
           hit = data.entries[k];
           break;
         }
