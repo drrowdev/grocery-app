@@ -198,6 +198,7 @@ const ITEM_EMOJI: Record<string, string> = {
   mustapippuri: "🧂",
   rypsiöljy: "🫒",
   oliiviöljy: "🫒",
+  sriracha: "🌶️",
   // Drinks
   kahvi: "☕",
   tee: "🍵",

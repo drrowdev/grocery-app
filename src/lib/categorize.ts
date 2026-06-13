@@ -69,7 +69,7 @@ Return fields:
 ALWAYS translate to the other language. If the user typed FI, give the full SV translation. If they typed SV, give the full FI translation. If they typed EN, give both FI and SV. Preserve modifiers ('maustamaton', 'frysta', 'färska', '10%', 'luomu') in both translations.
 
 Category guidance (when in doubt):
-- Condiments, sauces, dressings, mayonnaise, ketchup, mustard, vinegar, soy sauce, sriracha, pesto, jam, honey → "canned" (jars/bottles)
+- Condiments, sauces, dressings, mayonnaise, ketchup, mustard, vinegar, soy sauce, sriracha, pesto, jam, honey → "canned" (jars/bottles). Sriracha and other hot/chilli sauces are ALWAYS "canned" even with a flavour modifier like "orange sriracha" — the modifier does not make it a drink.
 - Bouillon cubes, stock, soup → "canned"
 - Cooking oil, vinegar → "canned"
 - Crackers, chips, chocolate, candy, nuts → "snacks"
