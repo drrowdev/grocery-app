@@ -114,13 +114,13 @@ const dict = {
     fi: "Ehdotukset perustuvat ostohistoriaasi.",
     sv: "Förslag baseras på din inköpshistorik.",
   },
-  aiModeActive: { fi: "Aika täydentää", sv: "Dags att handla" },
+  aiModeActive: { fi: "Pian täydennettävää", sv: "Snart att fylla på" },
   aiModeWatching: { fi: "Tunnen rytmisi", sv: "Håller koll" },
   aiModeLearning: { fi: "Opettelen tapojasi", sv: "Lär mig dina vanor" },
   aiModeIdle: { fi: "Valmiina kuuntelemaan", sv: "Lyssnar" },
   aiSubActive: {
-    fi: "Nämä taitavat olla loppumassa.",
-    sv: "De här lär vara på slutet.",
+    fi: "Arvio ostotahtisi ja määriesi perusteella: nämä ovat pian täydennyksen tarpeessa.",
+    sv: "Uppskattat från din takt och dina mängder: de här behöver snart fyllas på.",
   },
   aiSubWatching: {
     fi: "Seuraan jo ostorytmiäsi. Ei ostettavaa juuri nyt.",

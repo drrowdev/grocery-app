@@ -156,7 +156,11 @@ export default async function ListPage({
   let aiStatus: AiStatus = { tracked: 0, recurring: 0, dueNow: 0 };
 
   try {
-    const horizon = new Date(Date.now() + 2 * 86400000).toISOString();
+    // Proactive top-up window: surface staples whose estimated run-out
+    // (or usual repurchase cadence) lands within the next week, so the card
+    // acts as a "coming up this week" heads-up rather than only flagging
+    // things the moment they run dry. Each item still shows its own estimate.
+    const horizon = new Date(Date.now() + 7 * 86400000).toISOString();
 
     // Batch every independent query for this render into one parallel round
     // instead of running them sequentially: the selected list's items, the
